@@ -26,4 +26,4 @@ Dependencies
 License
 ------------
 
-Released under a BSD (3-clause) license
+Released under a Apache 2.0 License. See `LICENSE` for details.
