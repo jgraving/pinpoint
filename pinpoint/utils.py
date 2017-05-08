@@ -434,6 +434,14 @@ def get_points(polygon):
 
 	return points
 
+def test_area(area, area_min, area_max, area_sign):
+	if np.sign(area) == area_sign and area_min <= np.abs(area) <= area_max:
+		area_test = True
+	else:
+		area_test = False
+
+	return area_test
+
 def test_quad(polygon, polygon_area, area_min, area_max, area_sign):
 
 	# if 4 vertices, sign is correct, value is within range, and polygon is convex...
@@ -465,7 +473,7 @@ def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_prox
 
 			contour_area = get_area(contour) # calculate the signed area
 
-			if np.sign(contour_area) == area_sign and area_min <= np.abs(contour_area) <= area_max: # if the sign is correct and value is within range...
+			if test_area(contour_area, area_min, area_max, area_sign): # if the sign is correct and value is within range...
 				
 				(polygon, polygon_area, perimeter) = get_polygon(contour, tolerance)
 				peri_area_ratio = perimeter/contour_area
