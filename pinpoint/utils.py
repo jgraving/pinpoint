@@ -80,9 +80,9 @@ def add_border(tag, tag_shape, white_width = 1, black_width = 1):
 	black_border[black_width:tag_shape[0]+(2*white_width)+black_width, black_width:tag_shape[1]+(2*white_width)+black_width] = white_border
 
 	tag = black_border
-	bordered_tag = tag.reshape((1,tag.shape[0]*tag.shape[1]))
+	bordered_tag = tag.reshape((tag.shape[0]*tag.shape[1]))
 	tag_shape = black_border.shape
-	return  tag_shape, bordered_tag
+	return  bordered_tag
 
 def check_diffs(array1, array2, ndiffs, test_num):
 	
@@ -421,16 +421,17 @@ def test_edge_proximity(contour, edge_proximity, x_proximity, y_proximity):
 
 def get_pixels(image, points, dst, max_side, barcode_size):
 
-	M = cv2.getPerspectiveTransform(points, dst)
-	warped = cv2.warpPerspective(image, M, (max_side, max_side), flags = (cv2.INTER_LINEAR), borderValue = 255)
-	pixels = pixels = cv2.resize(warped, barcode_size, interpolation = cv2.INTER_AREA)
+	M = cv2.getPerspectiveTransform(points.astype(np.float32), dst)
+	pixels = cv2.warpPerspective(image, M, (max_side, max_side), flags = (cv2.INTER_LINEAR), borderValue = 255)
+	#pixels = cv2.resize(warped, barcode_size, interpolation = cv2.INTER_AREA)    
 
 	return pixels
 
 def get_points(polygon):
 
-	points = np.squeeze(polygon).astype(np.float32)
-	points = order_points(points)
+	polygon = np.squeeze(polygon)
+	points = order_points(polygon)
+	points = polygon
 
 	return points
 
@@ -519,52 +520,48 @@ def correlate_barcodes(pixels, master_list):
 
 def match_barcodes(points_array, pixels_array, master_list, IDs, IDs_index, correlation_thresh):
 
-	master_correlation_matrix = correlate_barcodes(pixels_array, master_list)
-	best_values_index = np.argmax(master_correlation_matrix, axis = 0)
-	best_values = np.max(master_correlation_matrix, axis = 0)
+    master_correlation_matrix = 1-pairwise_distances(pixels_array, master_list, metric='correlation')#correlate_barcodes(pixels_array, master_list)
+    correlation_index = np.where(master_correlation_matrix > correlation_thresh)
+    
+    correlations = master_correlation_matrix
+    best_IDs_index = correlation_index[1]
+    best_IDs = IDs[best_IDs_index]
+    
+    points_array = points_array[correlation_index[0]]
+    pixels_array = pixels_array[correlation_index[0]]
+    
+    for idx, (points, best_index, ID) in enumerate(zip(points_array, best_IDs_index, best_IDs)):
+        
+        rotation_test = best_index % 4
+        
+        tl, tr, br, bl = points
+        
+        corners = np.zeros((4,2))
 
-	IDs_index = IDs_index[best_values > correlation_thresh]
+        if rotation_test == 3:
+            corners = points
 
-	best_values_index = best_values_index[best_values > correlation_thresh]
-	best_IDs = IDs[best_values > correlation_thresh]
-	best_points = points_array[best_values_index]
+        if rotation_test == 0:
+            corners[0] = bl
+            corners[1] = tl
+            corners[2] = tr
+            corners[3] = br
 
-	if best_value > 0.8:
+        if rotation_test == 1:
+            corners[0] = br
+            corners[1] = bl
+            corners[2] = tl
+            corners[3] = tr
 
-		best_index = np.argmax(correlation)
-		ID = IDs[best_index]
-		rotation_test = best_index % 4
-
-		corners = np.zeros((4,2))
-
-		if rotate_test == 3:
-			corners = points
-
-		if rotate_test == 0:
-			corners[0] = bl
-			corners[1] = tl
-			corners[2] = tr
-			corners[3] = br
-			
-		if rotate_test == 1:
-			corners[0] = br
-			corners[1] = bl
-			corners[2] = tl
-			corners[3] = tr
-			
-		if rotate_test == 2:
-			corners[0] = tr
-			corners[1] = br
-			corners[2] = bl
-			corners[3] = tl
-
-		edge = np.array(np.mean([corners[0], corners[1]], axis = 0))
-		centroid = np.mean(corners, axis = 0)
-		corners[:,1] = -corners[:,1]
-		edge[1] = -edge[1]
-		centroid[1] = -centroid[1]
-		vector = np.subtract(edge, centroid)
-		vector_angle = utils.angle(vector)
+        if rotation_test == 2:
+            corners[0] = tr
+            corners[1] = br
+            corners[2] = bl
+            corners[3] = tl
+    
+        points_array[idx] = corners
+        
+    return (points_array, best_IDs, correlations)
 
 def get_warp_dst(max_side = 100):
 	
