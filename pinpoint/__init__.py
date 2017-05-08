@@ -16,7 +16,7 @@ limitations under the License.
 
 import utils
 import calibration
-from TagList import TagList
+from TagDictionary import TagDictionary
 
 set()
 
