@@ -69,6 +69,17 @@ def add_white_border(master_list, tag_shape, white_width):
 
 		return bordered
 	
+def get_id_list(ntags):
+	id_list = []
+	for idx in range(ntags):
+		ID = [idx,idx,idx,idx]
+		id_list.append(ID)
+
+	id_list = np.array(id_list) + 1
+	id_list = id_list.flatten()
+
+	return id_list
+
 class TagDictionary:
 
 	"""A class for generating, saving, loading, and printing 2-D barcode tags.
@@ -157,13 +168,7 @@ class TagDictionary:
 
 		self.ntags = self.master_list.shape[0]//4
 
-		id_list = []
-		for idx in range(self.ntags):
-			ID = [idx,idx,idx,idx]
-			id_list.append(ID)
-
-		id_list = np.array(id_list) + 1
-		self.id_list = id_list.flatten()
+		self.id_list = get_id_list(self.ntags)
 	
 		if verbose:
 			print "Done!"
