@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -20,7 +20,8 @@ import matplotlib.pyplot as plt
 import pickle
 from sklearn.metrics.pairwise import pairwise_distances
 from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
-from .utils import rotate_tag90
+from .utils import rotate_tag90, add_border
+
 
 def pairwise_distance_check(X, Y=None, distance=5, metric='cityblock', n_jobs=1):
 	""" Check the pairwise distances between two arrays.
@@ -58,6 +59,16 @@ def pairwise_distance_check(X, Y=None, distance=5, metric='cityblock', n_jobs=1)
 	
 	return test
 
+def add_white_border(master_list, tag_shape, white_width):
+	
+		bordered = []
+		for tag in master_list:
+			new_tag = add_border(tag, tag_shape, white_width=white_width, black_width=0)
+			bordered.append(new_tag)
+		bordered = np.array(bordered)
+
+		return bordered
+	
 class TagDictionary:
 
 	"""A class for generating, saving, loading, and printing 2-D barcode tags.
@@ -84,8 +95,8 @@ class TagDictionary:
 		self.distance = distance
 		self.metric = metric
 		self.white_width = white_width
-		self.black_width = black_width
 		self.white_shape = tuple([x+(self.white_width*2) for x in self.tag_shape])
+		self.black_width = black_width
 		self.black_shape = tuple([x+(self.white_width*2)+(self.black_width*2) for x in self.tag_shape])
 
 		self.first_tag = True # start with first tag
@@ -147,7 +158,6 @@ class TagDictionary:
 		self.ntags = self.master_list.shape[0]//4
 
 		id_list = []
-
 		for idx in range(self.ntags):
 			ID = [idx,idx,idx,idx]
 			id_list.append(ID)
@@ -157,7 +167,9 @@ class TagDictionary:
 	
 		if verbose:
 			print "Done!"
-
+            
+		self.barcode_list = add_white_border(self.master_list, self.tag_shape, self.white_width)
+        
 		return self
 		
 	def save_dict(self, filename = "master_list.pkl"):
@@ -230,21 +242,24 @@ class TagDictionary:
 		self.white_shape = tuple([x+(self.white_width*2) for x in self.tag_shape])
 		self.black_shape = tuple([x+(self.white_width*2)+(self.black_width*2) for x in self.tag_shape])
 		self.ntags = self.master_list.shape[0]//4
+		self.id_index = np.arange(len(self.id_list))
 		self.tag_len = self.tag_shape[0]*self.tag_shape[1]
+
+		self.barcode_list = add_white_border(self.master_list, self.tag_shape, self.white_width)
 
 		self.loaded = True
 
 		return self.loaded
 
 
-	def print_tags(self, file, ntags = 200, page_size = (8.26, 11.69), ncols = 20, id_fontsize = 5, arrow_fontsize = 10, id_digits = 4, show = True):
+	def print_tags(self, filename, ntags = 200, page_size = (8.26, 11.69), ncols = 20, id_fontsize = 5, arrow_fontsize = 10, id_digits = 4, show = True):
 
 		"""Print tags as image file or PDF. Default settngs are for ~6-mm wide tags.
 
 		Parameters
 		----------
-		file : str
-			Location for saving the barcode images, must be `.pdf` or image (`.png`, `.jpg`, etc.) file extension.
+		filename : str
+			Location for saving the barcode images, must be vector graphic (`.pdf`, '.svg', '.eps') or image (`.png`, `.jpg`, etc.) file extension.
 		ntags : int, default = 200
 			Number of tags per page.
 		page_size : tuple of float, default = (8.26, 11.69)
@@ -289,11 +304,9 @@ class TagDictionary:
 
 				plot += 1
 
-		plt.savefig(file, dpi=600, interpolation = 'none')
+		plt.savefig(filename, dpi=600, interpolation = 'none')
 
 		if show == True:
 			plt.show()
 
 		return True
-
-
