@@ -95,7 +95,7 @@ class Tracker(TagDictionary, VideoReader):
         return pixels_array, points_array, best_id_list, correlations
         
 
-"""
+
 class Tracker(TagDictionary):
 	
 	"""Initializes a Tracker.
@@ -524,4 +524,4 @@ class Tracker(TagDictionary):
 			out.release()
 
 		for i in range(10):
-			cv2.waitKey(1)"""
+			cv2.waitKey(1)
