@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -17,9 +17,9 @@ limitations under the License.
 import numpy as np
 import cv2
 from numba import jit
-from scipy.spatial import distance as dist
 from warnings import warn
 from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
+from sklearn.metrics.pairwise import pairwise_distances
 
 def rotate_tag90(tag, tag_shape, n=1):
 	
@@ -83,48 +83,6 @@ def add_border(tag, tag_shape, white_width = 1, black_width = 1):
 	bordered_tag = tag.reshape((tag.shape[0]*tag.shape[1]))
 	tag_shape = black_border.shape
 	return  bordered_tag
-
-def check_diffs(array1, array2, ndiffs, test_num):
-	
-	""" Check for differences between two arrays. Each element of array1 is checked against all elements of array2.
-		
-		Parameters
-		----------
-		array1 : 2-D array_like
-			Array of flattened barcodes to test against array2.
-		array2 : 2-D array_like
-			Array of flattened barcodes to test array1 against.
-		ndiffs : int
-			Minimum number of differences between all barcodes in array1 and array2.
-		test_num : int
-			Number of elements in array2 that each element in array1 must be at least ndiffs different from.
-			
-		Returns
-		-------
-		test : int
-			Number of elements in array1 that are at least ndiffs different from all elements in array2.
-		
-		"""
-	
-	array1 = np.asarray(array1).astype(np.uint8)
-	array2 = np.asarray(array2).astype(np.uint8)
-	test_list = np.array([], dtype = bool)
-	
-	for tag in array1:
-		tag = np.asarray([tag]).astype(np.uint8)
-		repeat_tags = np.repeat(tag, array2.shape[0], axis = 0)
-		tag_diffs = np.subtract(array2,repeat_tags)
-		tag_diffs[tag_diffs>1] = 1
-		tag_diffs = np.sum(tag_diffs, axis = 1)
-		diff_bool = tag_diffs >= ndiffs # test for minimum number of differences
-		test = np.sum(diff_bool)
-			
-		if test == test_num: # if element in array1 is different enough from all elements in array2...
-			test_list = np.append(test_list, True)
-	
-	test = np.sum(test_list)
-	
-	return test
 
 def crop(src, pt1, pt2):
 	
@@ -243,18 +201,6 @@ def order_points(points):
 	ordered = _order_points(points)
 	
 	return ordered
-	
-def rowwise_corr(A,B):
-	# Rowwise mean of input arrays & subtract from input arrays themeselves
-	A_mA = np.subtract(A, A.mean(1)[:,None])
-	B_mB = np.subtract(B, B.mean(1)[:,None])
-
-	# Sum of squares across rows
-	ssA = np.square(A_mA).sum(1)
-	ssB = np.square(B_mB).sum(1)
-
-	# Finally get corr coeff
-	return np.divide(np.dot(A_mA,B_mB.T), np.sqrt(np.dot(ssA[:,None],ssB[None])))
 
 def angle(vector, degrees = True):
 	
@@ -335,7 +281,7 @@ def get_grayscale(color_image, channel = None):
 
 	return gray_image
 
-def get_threshold(gray_image, block_size = 1001, offset = 2):
+def get_threshold(gray_image, block_size = 101, offset = 0):
 
 	""" Returns binarized thresholded image from single-channel grayscale image.
 
@@ -362,7 +308,7 @@ def get_threshold(gray_image, block_size = 1001, offset = 2):
 		raise TypeError("offset must be type int or float")
 	if type(gray_image) is not np.ndarray:
 		raise TypeError("image must be a numpy array")
-	if len(gray_image.shape) != 2:
+	if gray_image.ndim != 2:
 		raise ValueError("image must be grayscale")
 	if gray_image.dtype is not np.dtype(np.uint8):
 		raise TypeError("image array must be dtype np.uint8")
@@ -419,11 +365,10 @@ def test_edge_proximity(contour, edge_proximity, x_proximity, y_proximity):
 
 	return edge_proximity_test
 
-def get_pixels(image, points, dst, max_side, barcode_size):
+def get_pixels(image, points, template, max_side):
 
-	M = cv2.getPerspectiveTransform(points.astype(np.float32), dst)
+	M = cv2.getPerspectiveTransform(points.reshape((4,1,2)).astype(np.float32), template)
 	pixels = cv2.warpPerspective(image, M, (max_side, max_side), flags = (cv2.INTER_LINEAR), borderValue = 255)
-	#pixels = cv2.resize(warped, barcode_size, interpolation = cv2.INTER_AREA)    
 
 	return pixels
 
@@ -486,7 +431,7 @@ def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_prox
 	return (geometry_test, polygon)
 
 
-def get_candidate_barcodes(image, contours, barcode_size, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance, max_side, dst):
+def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance, max_side, template):
 
 	FIRST = True
 	points_array = None
@@ -501,15 +446,15 @@ def get_candidate_barcodes(image, contours, barcode_size, area_min, area_max, ar
 			(geometry_test, polygon) = test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance)
 			
 			if geometry_test == True:
-				points = get_points(polygon).reshape((1,4,2))
-				pixels = get_pixels(image, points, dst, max_side, barcode_size).reshape((1,-1))
+				points = get_points(polygon)
+				pixels = get_pixels(image, points, template, max_side).reshape((1,-1))
 
 				if FIRST == True:
-					points_array = points
+					points_array = points.reshape((1,4,2))
 					pixels_array = pixels
 					FIRST = False
 				else:
-					points_array = np.append(points_array, points, axis = 0)
+					points_array = np.append(points_array, points.reshape((1,4,2)), axis = 0)
 					pixels_array = np.append(pixels_array, pixels, axis = 0) 
 
 	return (points_array, pixels_array)
@@ -518,60 +463,74 @@ def correlate_barcodes(pixels, master_list):
 
 	return rowwise_corr(pixels, master_list)
 
-def match_barcodes(points_array, pixels_array, master_list, IDs, IDs_index, correlation_thresh):
+def match_barcodes(points_array, pixels_array, master_list, id_list, id_index, correlation_thresh):
 
-    master_correlation_matrix = 1-pairwise_distances(pixels_array, master_list, metric='correlation')#correlate_barcodes(pixels_array, master_list)
-    correlation_index = np.where(master_correlation_matrix > correlation_thresh)
-    
-    correlations = master_correlation_matrix
-    best_IDs_index = correlation_index[1]
-    best_IDs = IDs[best_IDs_index]
-    
-    points_array = points_array[correlation_index[0]]
-    pixels_array = pixels_array[correlation_index[0]]
-    
-    for idx, (points, best_index, ID) in enumerate(zip(points_array, best_IDs_index, best_IDs)):
-        
-        rotation_test = best_index % 4
-        
-        tl, tr, br, bl = points
-        
-        corners = np.zeros((4,2))
+	master_correlation_matrix = 1-pairwise_distances(pixels_array/255., master_list, metric='correlation')#correlate_barcodes(pixels_array, master_list)
+	correlation_index = np.where(master_correlation_matrix > correlation_thresh)
+	
+	correlations = master_correlation_matrix[correlation_index]
+	best_id_index = correlation_index[1]
+	best_id_list = id_list[best_id_index]
+	
+	points_array = points_array[correlation_index[0]]
+	pixels_array = pixels_array[correlation_index[0]]
+	
+	for idx, (points, best_index, ID) in enumerate(zip(points_array, best_id_index, best_id_list)):
+		
+		rotation_test = best_index % 4
+		
+		tl, tr, br, bl = points
+		
+		corners = np.zeros((4,2))
 
-        if rotation_test == 3:
-            corners = points
+		if rotation_test == 3:
+			corners = points
 
-        if rotation_test == 0:
-            corners[0] = bl
-            corners[1] = tl
-            corners[2] = tr
-            corners[3] = br
+		if rotation_test == 0:
+			corners[0] = bl
+			corners[1] = tl
+			corners[2] = tr
+			corners[3] = br
 
-        if rotation_test == 1:
-            corners[0] = br
-            corners[1] = bl
-            corners[2] = tl
-            corners[3] = tr
+		if rotation_test == 1:
+			corners[0] = br
+			corners[1] = bl
+			corners[2] = tl
+			corners[3] = tr
 
-        if rotation_test == 2:
-            corners[0] = tr
-            corners[1] = br
-            corners[2] = bl
-            corners[3] = tl
-    
-        points_array[idx] = corners
-        
-    return (points_array, best_IDs, correlations)
+		if rotation_test == 2:
+			corners[0] = tr
+			corners[1] = br
+			corners[2] = bl
+			corners[3] = tl
+	
+		points_array[idx] = corners
+		
+	return (points_array, best_id_list, correlations)
 
-def get_warp_dst(max_side = 100):
+def get_tag_template(max_side):
 	
 	length = max_side - 1
-	dst = np.array([[0, 0],
+	template = np.array([[0, 0],
 					[length, 0],
 					[length, length],
 					[0, length]],
 					dtype = "float32")
 
-	return dst
+	return template
 
+def preprocess_barcodes(pixels_array, var_thresh=500, barcode_shape=(7,7)):
 
+	zeros = np.zeros(barcode_shape)
+	zeros[1:-1,1:-1] = 1
+
+	variances = np.var(pixels_array, axis=1)
+	for idx,(pixels,var) in enumerate(zip(pixels_array,variances)):
+		if var > var_thresh:
+			ret, pixels = cv2.threshold(pixels,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+			pixels = pixels.reshape(barcode_shape)
+			pixels[zeros == 0] = 255
+		pixels = pixels.flatten()
+		pixels_array[idx] = pixels
+		
+	return pixels_array
