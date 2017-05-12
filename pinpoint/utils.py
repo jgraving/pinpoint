@@ -23,24 +23,25 @@ from sklearn.metrics.pairwise import pairwise_distances
 
 def rotate_tag90(tag, tag_shape, n=1):
 	
-	"""Rotate barcode tag 90 degrees.
-		
-		Parameters
-		----------
-		tag : 1-D array_like
-			Flattened barcode tag.
-		tag_shape : tuple of int
-			Shape of the barcode tag.
-		n : int
-			Number of times to rotate 90 degrees.
-		
-		
-		Returns
-		-------
-		tag_rot : 1-D array
-			Returns rotated tag flattened to 1-D array.
-		
-		"""
+	"""
+	Rotate barcode tag 90 degrees.
+	
+	Parameters
+	----------
+	tag : 1-D array_like
+		Flattened barcode tag.
+	tag_shape : tuple of int
+		Shape of the barcode tag.
+	n : int
+		Number of times to rotate 90 degrees.
+	
+	
+	Returns
+	-------
+	tag_rot : 1-D array
+		Returns rotated tag flattened to 1-D array.
+	
+	"""
 	
 	tag = np.asarray(tag)
 	vector_shape = tag.shape
@@ -51,24 +52,25 @@ def rotate_tag90(tag, tag_shape, n=1):
 
 def add_border(tag, tag_shape, white_width = 1, black_width = 1):
 	
-	"""Add black and white border to barcode tag.
+	"""
+	Add black and white border to barcode tag.
 		
-		Parameters
-		----------
-		tag : 1-D array_like
-			Flattened barcode tag.
-		tag_shape : tuple of int
-			Shape of the barcode tag without a border.
-		white_width : int
-			Width of white border.
-		black_width : int
-			Width of black border.
-			
-		Returns
-		-------
-		bordered_tag : 1-D array
-			Returns tag with border added flattened to 1-D array.
-		"""
+	Parameters
+	----------
+	tag : 1-D array_like
+		Flattened barcode tag.
+	tag_shape : tuple of int
+		Shape of the barcode tag without a border.
+	white_width : int
+		Width of white border.
+	black_width : int
+		Width of black border.
+		
+	Returns
+	-------
+	bordered_tag : 1-D array
+		Returns tag with border added flattened to 1-D array.
+	"""
 	
 	tag = np.asarray(tag)
 	tag = tag.reshape(tag_shape)
@@ -143,19 +145,20 @@ def _order_points(points):
 	
 def order_points(points):
 
-	""" Order 4x2 array in clockwise order from top-left corner.
+	""" 
+	Order 4x2 array in clockwise order from top-left corner.
 
-		Parameters
-		----------
-		points : array_like
-			4x2 array of points to order.
-			
-		Returns
-		-------
-		ordered : ndarray
-			Points ordered clockwise from top-left corner.
+	Parameters
+	----------
+	points : array_like
+		4x2 array of points to order.
 		
-		"""
+	Returns
+	-------
+	ordered : ndarray
+		Points ordered clockwise from top-left corner.
+	
+	"""
 	if type(points) != np.ndarray:
 		raise TypeError("points must be numpy array")
 	if points.ndim != 2:
@@ -171,25 +174,26 @@ def order_points(points):
 
 def get_grayscale(color_image, channel = None):
 
-	""" Returns single-channel grayscale image from 3-channel BGR color image.
+	""" 
+	Returns single-channel grayscale image from 3-channel BGR color image.
 
-		Parameters
-		----------
-		color_image : (MxNx3) numpy array
-			3-channel BGR-format color image as a numpy array
-		channel : {'blue', 'green', 'red', 'none', None}, default = None
-			The color channel to use for producing the grayscale image.
-			
-		Returns
-		-------
-		gray_image : (MxNx1) numpy array
-			Single-channel grayscale image as a numpy array.
+	Parameters
+	----------
+	color_image : (MxNx3) numpy array
+		3-channel BGR-format color image as a numpy array
+	channel : {'blue', 'green', 'red', 'none', None}, default = None
+		The color channel to use for producing the grayscale image.
+		
+	Returns
+	-------
+	gray_image : (MxNx1) numpy array
+		Single-channel grayscale image as a numpy array.
 
-		Notes
-		----------
-		For channel, None uses the default linear transformation from OpenCV: Y = 0.299R + 0.587G + 0.114B
-		Channels 'blue', 'green', and 'red' use the respective color channel as the grayscale image. 
-		Under white ambient lighting, 'green' typically provides the lowest noise. Under red and infrared lighting, 'red' typically provides the lowest noise.
+	Notes
+	----------
+	For channel, None uses the default linear transformation from OpenCV: Y = 0.299R + 0.587G + 0.114B
+	Channels 'blue', 'green', and 'red' use the respective color channel as the grayscale image. 
+	Under white ambient lighting, 'green' typically provides the lowest noise. Under red and infrared lighting, 'red' typically provides the lowest noise.
 
 	"""
 	if type(channel) not in [StringType, NoneType]:
@@ -220,22 +224,23 @@ def get_grayscale(color_image, channel = None):
 
 def get_threshold(gray_image, block_size = 101, offset = 0):
 
-	""" Returns binarized thresholded image from single-channel grayscale image.
+	""" 
+	Returns binarized thresholded image from single-channel grayscale image.
 
-		Parameters
-		----------
-		gray_image : (MxNx1) numpy array
-			Single-channel grayscale image as a numpy array
-		block_size : int, default = 1001
-			Odd value integer. Size of the local neighborhood for adaptive thresholding.
-		offset : default = 2
-			Constant subtracted from the mean. Normally, it is positive but may be zero or negative as well. 
-			The threshold value is the mean of the block_size x block_size neighborhood minus offset.
+	Parameters
+	----------
+	gray_image : (MxNx1) numpy array
+		Single-channel grayscale image as a numpy array
+	block_size : int, default = 1001
+		Odd value integer. Size of the local neighborhood for adaptive thresholding.
+	offset : default = 2
+		Constant subtracted from the mean. Normally, it is positive but may be zero or negative as well. 
+		The threshold value is the mean of the block_size x block_size neighborhood minus offset.
 
-		Returns
-		-------
-		threshold_image : (MxNx1) numpy array
-			Binarized (0, 255) image as a numpy array.
+	Returns
+	-------
+	threshold_image : (MxNx1) numpy array
+		Binarized (0, 255) image as a numpy array.
 
 	"""
 
@@ -256,17 +261,18 @@ def get_threshold(gray_image, block_size = 101, offset = 0):
 
 def get_contours(threshold_image):
 
-	""" Returns a list of contours from a binarized thresholded image.
+	""" 
+	Returns a list of contours from a binarized thresholded image.
 
-		Parameters
-		----------
-		threshold_image : (MxNx1) numpy array
-			Binarized threshold image as a numpy array
+	Parameters
+	----------
+	threshold_image : (MxNx1) numpy array
+		Binarized threshold image as a numpy array
 
-		Returns
-		-------
-		contours : list
-			List of contours extracted from threshold_image.
+	Returns
+	-------
+	contours : list
+		List of contours extracted from threshold_image.
 
 	"""
 	#if len(set([0, 255]) - set(np.unique(threshold_image))) != 0:
@@ -278,23 +284,29 @@ def get_contours(threshold_image):
 
 def get_polygon(contour, tolerance=0.1):
 
-	""" Returns a polygonal approximation of a contour.
+	""" 
+	Returns a polygonal approximation of a contour.
 
-		Parameters
-		----------
-		contour : array_like
-			Contour to fit a polygon to
-		tolerance : int or float, default = 0.1
-			Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
-
-		Returns
-		-------
-		polygon : ndarray
-			The fitted polygon.
-		polygon_area : float
-			The signed area of the polygon
-		perimeter : float
-			The perimeter of the contour
+	Parameters
+	----------
+	contour : array_like
+		Contour to fit a polygon to
+	tolerance : int or float, default = 0.1
+		Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
+		This value is used to set epsilon, which is the maximum distance between the original contour 
+		and its polygon approximation. Higher values decrease the number of vertices in the polygon.
+		Lower values increase the number of vertices in the polygon. This parameter affects 
+		how many many contours reach the barcode matching algorithm, 
+		as only polygons with 4 vertices are used.
+	Returns
+	-------
+	polygon : ndarray
+		The fitted polygon.
+	polygon_area : float
+		The signed area of the polygon
+	perimeter : float
+		The perimeter of the contour
+		
 
 	"""
 	perimeter = cv2.arcLength(contour, True)
@@ -345,6 +357,7 @@ def test_edge_proximity(contour, edge_proximity, x_proximity, y_proximity):
 	return edge_proximity_test
 
 def get_pixels(image, points, template, max_side):
+
 	""" 
 	Use affine transform to extract pixel values from an image.
 
@@ -353,7 +366,7 @@ def get_pixels(image, points, template, max_side):
 	image : array_like
 		Grayscale image from which to extract pixel values
 	points : array_like
-		An array of points corresponding to the four corners of the barcode
+		An array of coordinates corresponding to the four corners of the candidate barcode
 	template : array_like
 		A template for storing the extracted pixels. 
 		This should be precalculated using get_tag_template()
@@ -394,7 +407,7 @@ def get_points(polygon):
 	return points
 
 def test_area(area, area_min, area_max, area_sign):
-	
+
 	"""
 	Test the area of a candidate barcode.
 
@@ -477,11 +490,48 @@ def get_area(contour):
 	return cv2.contourArea(contour, True)
 
 def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance):
-	
+
+	"""
+	Test the geometry of a contour. Return the corners if it is a candidate barcode.
+
+	Parameters
+	----------
+	contour : array_like
+		The contour to test
+	area_min : float
+		Minimum area
+	area_max : float
+		Maximum area
+	area_sign : +1 or -1
+		The sign of the area
+	edge_proximity : int, default = 1
+		The threshold in pixels for how close a contour can be to the edge. 
+		Default is 1 pixel
+	x_proximity : int
+		The threshold in pixels for how close a contour can be to the x-axis border.
+		This should correspond to frame_width - edge_proximity, but is precalculated for speed
+	y_proximity : int 
+		The threshold in pixels for how close a contour can be to the y-axis border.
+		This should correspond to frame_height - edge_proximity, but is precalculated for speed
+	tolerance : int or float, default = 0.1
+		Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
+		This value is used to set epsilon, which is the maximum distance between the original contour 
+		and its polygon approximation. Higher values decrease the number of vertices in the polygon.
+		Lower values increase the number of vertices in the polygon. This parameter affects 
+		how many many contours reach the barcode matching algorithm, 
+		as only polygons with 4 vertices are used.
+	Returns
+	-------
+	geometry_test : bool
+		Returns True if the contour is a candidate barcode.
+	polygon : ndarray
+		The polygon approximation of the contour
+
+	"""
 	geometry_test = False
 	polygon = None
 
-	if contour.shape[0] > 4:
+	if contour.shape[0] >= 4:
 
 		edge_proximity_test = test_edge_proximity(contour, edge_proximity, x_proximity, y_proximity)
 
@@ -501,7 +551,53 @@ def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_prox
 	return (geometry_test, polygon)
 
 
-def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance, max_side, template):
+def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance, template, max_side):
+
+	"""
+	Find candidate barcodes in an image.
+
+	Parameters
+	----------
+	image : array_like
+		The image containing the barcodes
+	contours : list
+		A list of contours from cv2.contours()
+	barcode_shape : tuple
+		The shape of the barcode with white border
+	area_min : float
+		Minimum area
+	area_max : float
+		Maximum area
+	area_sign : +1 or -1
+		The sign of the area
+	edge_proximity : int, default = 1
+		The threshold in pixels for how close a contour can be to the edge. 
+		Default is 1 pixel
+	x_proximity : int
+		The threshold in pixels for how close a contour can be to the x-axis border.
+		This should correspond to frame_width - edge_proximity, but is precalculated for speed
+	y_proximity : int 
+		The threshold in pixels for how close a contour can be to the y-axis border.
+		This should correspond to frame_height - edge_proximity, but is precalculated for speed
+	tolerance : int or float, default = 0.1
+		Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
+		This value is used to set epsilon, which is the maximum distance between the original contour 
+		and its polygon approximation. Higher values decrease the number of vertices in the polygon.
+		Lower values increase the number of vertices in the polygon. This parameter affects 
+		how many many contours reach the barcode matching algorithm, 
+		as only polygons with 4 vertices are used.
+	template : array_like
+		A template for storing the extracted pixels. 
+		This should be precalculated using get_tag_template()
+	max_side : int 
+		The size of the template in pixels
+
+	Returns
+	-------
+	quad_test : bool
+		Returns True if the polygon is a quadrilateral.
+
+	"""
 
 	first_candidate = True
 	points_array = None
