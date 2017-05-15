@@ -359,7 +359,7 @@ def test_edge_proximity(contour, edge_proximity, x_proximity, y_proximity):
 def get_pixels(image, points, template, max_side):
 
 	""" 
-	Use affine transform to extract pixel values from an image.
+	Use affine transform to extract pixel values of candidate barcodes from an image.
 
 	Parameters
 	----------
@@ -486,8 +486,9 @@ def get_area(contour):
 	area : float
 		The signed area of a contour
 	"""
-
-	return cv2.contourArea(contour, True)
+	area = cv2.contourArea(contour, True)
+	
+	return area
 
 def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_proximity, y_proximity, tolerance):
 
@@ -520,16 +521,17 @@ def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_prox
 		Lower values increase the number of vertices in the polygon. This parameter affects 
 		how many many contours reach the barcode matching algorithm, 
 		as only polygons with 4 vertices are used.
+		
 	Returns
 	-------
 	geometry_test : bool
 		Returns True if the contour is a candidate barcode.
 	polygon : ndarray
 		The polygon approximation of the contour
-
 	"""
+
 	geometry_test = False
-	polygon = None
+	polygon = np.zeros((0,4,2))
 
 	if contour.shape[0] >= 4:
 
@@ -558,8 +560,8 @@ def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, a
 
 	Parameters
 	----------
-	image : array_like
-		The image containing the barcodes
+	image : array_like, shape (n_rows, n_cols, 1)
+		An image containing barcodes
 	contours : list
 		A list of contours from cv2.contours()
 	barcode_shape : tuple
@@ -584,8 +586,7 @@ def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, a
 		This value is used to set epsilon, which is the maximum distance between the original contour 
 		and its polygon approximation. Higher values decrease the number of vertices in the polygon.
 		Lower values increase the number of vertices in the polygon. This parameter affects 
-		how many many contours reach the barcode matching algorithm, 
-		as only polygons with 4 vertices are used.
+		how many many contours reach the barcode matching algorithm, as only polygons with 4 vertices are used.
 	template : array_like
 		A template for storing the extracted pixels. 
 		This should be precalculated using get_tag_template()
@@ -594,16 +595,15 @@ def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, a
 
 	Returns
 	-------
-	quad_test : bool
-		Returns True if the polygon is a quadrilateral.
-
+	points_array : ndarray, shape (n_samples, 4, 2)
+		Array of coordinates for candidate barcodes.
+	pixels_array : ndarray, shape (n_samples, barcode_shape[0]*barcode_shape[1])
+		Array of flattened pixels for candidate barcodes
 	"""
 
 	first_candidate = True
-	points_array = None
-	pixels_array = None
-	points = None
-	pixels = None
+	points_array = np.zeros((0, 4, 2))
+	pixels_array = np.zeros((0, barcode_shape[0]*barcode_shape[1]))
 
 	if len(contours) > 0: # if contours are found
 					
@@ -625,29 +625,33 @@ def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, a
 
 	return (points_array, pixels_array)
 
-def match_barcodes(points_array, pixels_array, barcode_list, id_list, id_index, distance_threshold):
+def match_barcodes(points_array, pixels_array, barcode_nn, id_list, id_index, distance_threshold):
 
-	distance_matrix = pairwise_distances(pixels_array//255, barcode_list, metric='cityblock')
-	distance_index = np.where(distance_matrix > distance_threshold)
-	
-	distances = distance_matrix[distance_index]
-	best_id_index = distance_index[1]
-	best_id_list = id_list[best_id_index]
-	
-	points_array = points_array[distance_index[0]]
-	pixels_array = pixels_array[distance_index[0]]
-	
-	return (points_array, best_id_list, best_id_index, distances)
+    distances, index = barcode_nn.kneighbors(pixels_array//255, n_neighbors=1)
+    distances = distances[:,0]
+    index = index[:,0]
+    
+    pixel_index = np.where(distances < distance_threshold)
+    distances = distances[pixel_index]
+    index = index[pixel_index]
+
+    points_array = points_array[pixel_index]
+    pixels_array = pixels_array[pixel_index]
+
+    best_id_list = id_list[index]
+    best_id_index = id_index[index]
+
+    return (points_array, pixels_array, best_id_list, best_id_index, distances)
 
 def sort_corners(points_array, best_id_index):
-
+    
 	for idx, (points, best_index) in enumerate(zip(points_array, best_id_index)):
 		
 		rotation_test = best_index % 4
 		
 		tl, tr, br, bl = points
 		
-		corners = np.zeros((4,2))
+		corners = np.zeros_like(points)
 
 		if rotation_test == 3:
 			corners = points
@@ -698,40 +702,69 @@ def otsu_threshold(pixels_array):
 
 	for idx,pixels in enumerate(pixels_array):
 		ret, pixels = cv2.threshold(pixels,0,255,cv2.THRESH_BINARY+cv2.THRESH_OTSU)
+		pixels = np.squeeze(pixels)
 		pixels_array[idx] = pixels
         
 	return pixels_array
 
-def test_edge_pixels(points_array, pixels_array, barcode_shape, edge_distance, white_width=1):
-    
-	pixels_array = pixels_array.reshape((-1, barcode_shape[0], barcode_shape[1]))
-	edge_template = np.ones_like(pixels_array, dtype=np.uint8) * 255
-	edge_template[white_width:-white_width,white_width:-white_width] = pixels_array[white_width:-white_width,white_width:-white_width] 
-	pixels_array = pixels_array.reshape((pixels_array.shape[0], -1))
-	edge_template = edge_template.reshape((pixels_array.shape[0], -1))
-	distances = cv2.absdiff(pixels_array, edge_template)//255
-	distances = np.sum(distances, axis=1)
-	distances_index = np.where(distances <= edge_distance)
-    
-	pixels_array = pixels_array[distances_index]
-	points_array = points_array[distances_index]
-
-	return  (points_array, pixels_array)
-
 def whiten_edge_pixels(pixels_array, barcode_shape, white_width):
     
-    pixels_array = pixels_array.reshape((-1, barcode_shape[0], barcode_shape[1]))
-    border_index = np.array([white_width,-white_width])
-    pixels_array[:, border_index, :] = 255
-    pixels_array[:, :, border_index] = 255
+    pixels_array = pixels_array.reshape((pixels_array.shape[0], barcode_shape[0], barcode_shape[1]))
+    edge_array = np.ones_like(pixels_array)
+    edge_array[:, white_width:-white_width, white_width:-white_width] = 0
+    pixels_array[edge_array == 1] = 255
+    pixels_array = pixels_array.reshape((pixels_array.shape[0], barcode_shape[0]*barcode_shape[1]))
     
     return pixels_array
 
-def process_pixels(points_array, pixels_array, var_thresh, barcode_shape, edge_distance, white_width):
+def process_pixels(points_array, pixels_array, var_thresh, barcode_shape, white_width):
     
     points_array, pixels_array = test_pixel_variance(points_array, pixels_array, var_thresh)
-    pixels_array = otsu_threshold(pixels_array)
-    points_array, pixels_array = test_edge_pixels(points_array, pixels_array, barcode_shape, edge_distance, white_width)
-    pixels_array = whiten_edge_pixels(pixels_array, barcode_shape, white_width)
-    
+    if pixels_array.shape[0] > 0:
+        pixels_array = otsu_threshold(pixels_array)
+    if pixels_array.shape[0] > 0:
+        pixels_array = whiten_edge_pixels(pixels_array, barcode_shape, white_width)
     return points_array, pixels_array
+
+def process_frame(frame, channel, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, max_side, template, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
+    
+    best_id_list = np.zeros((0,1))
+    distances = np.zeros((0,1))
+    
+    gray = get_grayscale(frame, channel=channel)
+    gray = np.flipud(gray)
+    thresh = get_threshold(gray, block_size=block_size, offset=offset)
+    contours = get_contours(thresh)
+    points_array, pixels_array = get_candidate_barcodes(image=gray,
+                                                        contours=contours,
+                                                        barcode_shape=barcode_shape,
+                                                        area_min=area_min,
+                                                        area_max=area_max,
+                                                        area_sign=-1,
+                                                        edge_proximity=1,
+                                                        x_proximity=x_proximity,
+                                                        y_proximity=y_proximity,
+                                                        tolerance=tolerance,
+                                                        max_side=max_side,
+                                                        template=template
+                                                       )
+    
+    if pixels_array.shape[0] > 0:
+        points_array, pixels_array = process_pixels(points_array,
+                                      pixels_array,
+                                      var_thresh=var_thresh,
+                                      barcode_shape=barcode_shape,
+                                      white_width=white_width
+                                     )
+    if pixels_array.shape[0] > 0:
+        points_array, pixels_array, best_id_list, best_id_index, distances = match_barcodes(points_array=points_array,
+                                                                  pixels_array=pixels_array,
+                                                                  barcode_nn=barcode_nn,
+                                                                  id_list=id_list,
+                                                                  id_index=id_index,
+                                                                  distance_threshold=distance_threshold
+                                                                                           )
+    if points_array.shape[0] > 0:                                                           
+        points_array = sort_corners(points_array, best_id_index)
+        
+    return (thresh, points_array, pixels_array, best_id_list, distances)
