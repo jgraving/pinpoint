@@ -26,6 +26,8 @@ import os.path
 import utils as utils
 from TagDictionary import TagDictionary
 
+from sklearn.neighbors import NearestNeighbors
+
 from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
 import warnings
 
@@ -33,16 +35,17 @@ cv2.setNumThreads(-1)
 
 __all__ = ['Tracker']
 
+
 class Tracker(TagDictionary, VideoReader):
     
-    def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, correlation_threshold=0.9, var_thresh=500, channel='green'):
+    def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green'):
         
         VideoReader.__init__(self, source)
         TagDictionary.__init__(self)
         self.area_min = area_range[0]
         self.area_max = area_range[1]
         self.tolerance = tolerance
-        self.correlation_threshold = correlation_threshold
+        self.distance_threshold = distance_threshold
         self.block_size = block_size
         self.offset = offset
         self.channel = channel
@@ -51,6 +54,7 @@ class Tracker(TagDictionary, VideoReader):
         self.frame_height = self.height()
         self.x_proximity = self.frame_width-1
         self.y_proximity = self.frame_height-1
+
         
     def track(self, batch_size=8):
         
@@ -58,41 +62,35 @@ class Tracker(TagDictionary, VideoReader):
         max_side=self.barcode_shape[0]
         template = get_tag_template(max_side)
         
-        frames = self.read_batch(batch_size)
-        for frame in frames:
-            gray = get_grayscale(frame, channel=self.channel)
-            gray = np.flipud(gray)
-            thresh = get_threshold(gray, block_size=self.block_size, offset=self.offset)
-            contours = get_contours(thresh)
-            points_array, pixels_array = get_candidate_barcodes(image=gray,
-                                                                contours=contours,
-                                                                barcode_shape=self.barcode_shape,
-                                                                area_min=self.area_min,
-                                                                area_max=self.area_max,
-                                                                area_sign=-1,
-                                                                edge_proximity=1,
-                                                                x_proximity=self.x_proximity,
-                                                                y_proximity=self.y_proximity,
-                                                                tolerance=self.tolerance,
-                                                                max_side=max_side,
-                                                                template=template
-                                                               )
-            
-            pixels_array = preprocess_barcodes(pixels_array,
-                                               var_thresh=self.var_thresh,
-                                               barcode_shape=self.barcode_shape
-                                              )
-            
-            points_array, best_id_list, correlations = match_barcodes(points_array,
-                                                                  pixels_array,
-                                                                  self.barcode_list,
-                                                                  self.id_list,
-                                                                  self.id_index,
-                                                                  self.correlation_threshold
-                                                                 )
-            
+        self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='brute')
+        self.barcode_nn.fit(self.barcode_list)
         
-        return pixels_array, points_array, best_id_list, correlations
+        #while not self.finished():
+        frames = self.read_batch(20)
+        for idx,frame in enumerate(frames):
+            thresh, points_array, pixels_array, best_id_list, distances = process_frame(frame=frame,
+                                                                                       channel=self.channel,
+                                                                                       block_size=self.block_size,
+                                                                                       offset = self.offset,
+                                                                                       barcode_shape=self.barcode_shape,
+                                                                                       white_width=self.white_width,
+                                                                                       area_min=self.area_min,
+                                                                                       area_max=self.area_max,
+                                                                                       x_proximity=self.x_proximity,
+                                                                                       y_proximity=self.y_proximity,
+                                                                                       tolerance=self.tolerance,
+                                                                                       max_side=max_side,
+                                                                                       template=template,
+                                                                                       var_thresh=self.var_thresh,
+                                                                                       barcode_nn=self.barcode_nn,
+                                                                                       id_list=self.id_list,
+                                                                                       id_index=self.id_index,
+                                                                                       distance_threshold=self.distance_threshold,
+                                                                                      )
+                        
+        
+        return (thresh, pixels_array, points_array, best_id_list, distances)
+        
         
 
 
