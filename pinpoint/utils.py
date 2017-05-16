@@ -807,7 +807,10 @@ def whiten_edge_pixels(pixels_array, barcode_shape, white_width):
 	----------
 	pixels_array : ndarray, shape (n_samples, n_pixels)
 		Array of flattened pixels for candidate barcodes
-			
+	barcode_shape : tuple
+		The shape of the barcode with white border
+	white_width : int
+		The bit width of the white border around the barcode
 	Returns
 	-------
 	pixels_array : ndarray, shape (n_samples, n_pixels)
@@ -843,8 +846,64 @@ def preprocess_pixels(points_array, pixels_array, var_thresh, barcode_shape, whi
 		pixels_array = whiten_edge_pixels(pixels_array, barcode_shape, white_width)
 	return points_array, pixels_array
 
-def process_frame(frame, channel, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, max_side, template, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
+def process_frame(frame, channel, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, template, max_side, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
+	"""
+	Process a single frame to track barcodes. 
 	
+	Parameters
+	----------
+	frame : (MxNx3) numpy array
+		3-channel BGR-format color image as a numpy array
+	channel : {'blue', 'green', 'red', 'none', None}, default = None
+		The color channel to use for producing the grayscale image.
+	block_size : int, default = 1001
+		Odd value integer. Size of the local neighborhood for adaptive thresholding.
+	offset : default = 2
+		Constant subtracted from the mean. Normally, it is positive but may be zero or negative as well. 
+		The threshold value is the mean of the block_size x block_size neighborhood minus offset.
+	barcode_shape : tuple
+		The shape of the barcode with white border
+	white_width : int
+			The bit width of the white border around the barcode
+	area_min : float
+		Minimum area
+	area_max : float
+		Maximum area
+	x_proximity : int
+		The threshold in pixels for how close a contour can be to the x-axis border.
+		This should correspond to frame_width - 1, but is precalculated for speed
+	y_proximity : int 
+		The threshold in pixels for how close a contour can be to the y-axis border.
+		This should correspond to frame_height - 1, but is precalculated for speed
+	tolerance : int or float, default = 0.1
+		Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
+		This value is used to set epsilon, which is the maximum distance between the original contour 
+		and its polygon approximation. Higher values decrease the number of vertices in the polygon.
+		Lower values increase the number of vertices in the polygon. This parameter affects 
+		how many many contours reach the barcode matching algorithm, 
+		as only polygons with 4 vertices are used.
+	template : array_like
+		A template for storing the extracted pixels. 
+		This should be precalculated using get_tag_template()
+	max_side : int 
+		The size of the template in pixels
+	var_thresh : float, (default = 500)
+		Minimum variance threshold
+	barcode_nn : NearestNeighbors class
+		A NearestNeighbors class from sci-kit learn fitted to a list of barcodes.
+		See sklearn.neighbors.NearestNeighbors for details
+	id_list : array_like
+		An array of known identities corresponding to the list of barcodes in barcode_nn
+	id_index : array_like
+		An array of indices corresponding to id_list
+	distance_threshold : float
+		The maximum distance between a barcode candidate and its matched identity
+
+	Returns
+	-------
+	pixels_array : ndarray, shape (n_samples, n_pixels)
+		Array of flattened pixels for candidate barcodes with preprocessed pixels
+	"""
 	best_id_list = np.zeros((0,1))
 	distances = np.zeros((0,1))
 	
