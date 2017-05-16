@@ -622,7 +622,7 @@ def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, a
 def match_barcodes(points_array, pixels_array, barcode_nn, id_list, id_index, distance_threshold):
 	
 	"""
-	Match candidate barcodes with known identities.
+	Match candidate barcodes
 
 	Parameters
 	----------
@@ -671,6 +671,7 @@ def match_barcodes(points_array, pixels_array, barcode_nn, id_list, id_index, di
 
 	return (points_array, pixels_array, best_id_list, best_id_index, distances)
 
+@jit(nopython=True)
 def sort_corners(points_array, best_id_index):
 	"""
 	Sort coordinates of matched barcode corners in clockwise order from the true top-left corner
@@ -689,11 +690,16 @@ def sort_corners(points_array, best_id_index):
 		Array of sorted coordinates for matched barcodes
 	"""
 
-	for idx, (points, best_index) in enumerate(zip(points_array, best_id_index)):
-		
+	for idx in range(points_array.shape[0]):
+        
+		points = points_array[idx]
+		best_index = best_id_index[idx]
 		rotation_test = best_index % 4
 		
-		tl, tr, br, bl = points
+		tl = points[0]
+		tr = points[1]
+		br = points[2]
+		bl = points[3]
 		
 		corners = np.empty_like(points)
 
@@ -717,7 +723,7 @@ def sort_corners(points_array, best_id_index):
 			corners[1] = br
 			corners[2] = bl
 			corners[3] = tl
-	
+
 		points_array[idx] = corners
 
 	return points_array
@@ -836,6 +842,8 @@ def preprocess_pixels(points_array, pixels_array, var_thresh, barcode_shape, whi
 			
 	Returns
 	-------
+	points_array : ndarray, shape (n_samples, 4, 2)
+		Array of coordinates for candidate barcodes
 	pixels_array : ndarray, shape (n_samples, n_pixels)
 		Array of flattened pixels for candidate barcodes with preprocessed pixels
 	"""
@@ -844,7 +852,8 @@ def preprocess_pixels(points_array, pixels_array, var_thresh, barcode_shape, whi
 		pixels_array = otsu_threshold(pixels_array)
 	if pixels_array.shape[0] > 0:
 		pixels_array = whiten_edge_pixels(pixels_array, barcode_shape, white_width)
-	return points_array, pixels_array
+
+	return (points_array, pixels_array)
 
 def process_frame(frame, channel, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, template, max_side, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
 	"""
@@ -901,8 +910,10 @@ def process_frame(frame, channel, block_size, offset, barcode_shape, white_width
 
 	Returns
 	-------
+	points_array : ndarray, shape (n_samples, 4, 2)
+		Array of coordinates for barcodes
 	pixels_array : ndarray, shape (n_samples, n_pixels)
-		Array of flattened pixels for candidate barcodes with preprocessed pixels
+		Array of flattened pixels for barcodes
 	"""
 	best_id_list = np.zeros((0,1))
 	distances = np.zeros((0,1))
