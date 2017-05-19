@@ -36,9 +36,12 @@ cv2.setNumThreads(-1)
 __all__ = ['Tracker']
 
 
+from sklearn.neighbors import NearestNeighbors
+import h5py
+
 class Tracker(TagDictionary, VideoReader):
     
-    def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green'):
+    def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green', resize=1):
         
         VideoReader.__init__(self, source)
         TagDictionary.__init__(self)
@@ -50,47 +53,75 @@ class Tracker(TagDictionary, VideoReader):
         self.offset = offset
         self.channel = channel
         self.var_thresh = var_thresh
+        self.resize = resize
         self.frame_width = self.width()
         self.frame_height = self.height()
-        self.x_proximity = self.frame_width-1
-        self.y_proximity = self.frame_height-1
+        self.x_proximity = (self.frame_width*self.resize)-1
+        self.y_proximity = (self.frame_height*self.resize)-1
 
         
     def track(self, batch_size=8):
+        self.h5file = h5py.File('test.h5', 'w')
+        dgroup = self.h5file.create_group('data')
+        
+        frame_idx_dset = dgroup.create_dataset('frame_idx', shape=(0,), dtype=np.int64, maxshape=(None,))
+        corners_dset = dgroup.create_dataset('corners', shape=(0,4,2), dtype=np.float64, maxshape=(None,4,2))
+        identity_dset = dgroup.create_dataset('identity', shape=(0,), dtype=np.int32, maxshape=(None,))
+        distances_dset = dgroup.create_dataset('distances', shape=(0,), dtype=np.int32, maxshape=(None,))
+        
+        dset_list = [frame_idx_dset, corners_dset, identity_dset, distances_dset]
         
         self.barcode_shape = self.white_shape
-        max_side=self.barcode_shape[0]
+        max_side=100
         template = get_tag_template(max_side)
         
-        self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='brute')
+        self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='ball_tree')
         self.barcode_nn.fit(self.barcode_list)
+        #dists = []
+        idx = 0
+        while not self.finished():
+        #for idx in range(1):
+            frames = self.read_batch(batch_size)
+            for frame in frames:
+                gray, thresh, points_array, pixels_array, best_id_list, distances = process_frame(frame=frame,
+                                                                                           channel=self.channel,
+                                                                                           resize=self.resize,
+                                                                                           block_size=self.block_size,
+                                                                                           offset = self.offset,
+                                                                                           barcode_shape=self.barcode_shape,
+                                                                                           white_width=self.white_width,
+                                                                                           area_min=self.area_min,
+                                                                                           area_max=self.area_max,
+                                                                                           x_proximity=self.x_proximity,
+                                                                                           y_proximity=self.y_proximity,
+                                                                                           tolerance=self.tolerance,
+                                                                                           max_side=max_side,
+                                                                                           template=template,
+                                                                                           var_thresh=self.var_thresh,
+                                                                                           barcode_nn=self.barcode_nn,
+                                                                                           id_list=self.id_list,
+                                                                                           id_index=self.id_index,
+                                                                                           distance_threshold=self.distance_threshold,
+                                                                                          )
+                points_array = points_array / self.resize
+                frame_idx = np.repeat(idx, points_array.shape[0])
+                idx += 1
+                data_list = [frame_idx, points_array, best_id_list, distances]
+                for (dset, data) in zip(dset_list, data_list):
+                    
+                    current_shape = list(dset.shape)
+                    current_size = current_shape[0]
+                    
+                    new_shape = current_shape
+                    new_shape[0] = new_shape[0]+data.shape[0]
+                    new_size = new_shape[0]
+                    
+                    dset.resize(tuple(new_shape))
+                    dset[current_size:new_size] = data
         
-        #while not self.finished():
-        frames = self.read_batch(20)
-        for idx,frame in enumerate(frames):
-            thresh, points_array, pixels_array, best_id_list, distances = process_frame(frame=frame,
-                                                                                       channel=self.channel,
-                                                                                       block_size=self.block_size,
-                                                                                       offset = self.offset,
-                                                                                       barcode_shape=self.barcode_shape,
-                                                                                       white_width=self.white_width,
-                                                                                       area_min=self.area_min,
-                                                                                       area_max=self.area_max,
-                                                                                       x_proximity=self.x_proximity,
-                                                                                       y_proximity=self.y_proximity,
-                                                                                       tolerance=self.tolerance,
-                                                                                       max_side=max_side,
-                                                                                       template=template,
-                                                                                       var_thresh=self.var_thresh,
-                                                                                       barcode_nn=self.barcode_nn,
-                                                                                       id_list=self.id_list,
-                                                                                       id_index=self.id_index,
-                                                                                       distance_threshold=self.distance_threshold,
-                                                                                      )
-                        
         
-        return (thresh, pixels_array, points_array, best_id_list, distances)
-        
+        self.h5file.close()
+        return (gray, thresh, pixels_array, points_array, best_id_list, distances)
         
 
 
