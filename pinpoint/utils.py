@@ -94,6 +94,7 @@ def crop(src, pt1, pt2):
 	
 	return cropped
 
+
 @jit(nopython = True)
 def _order_points(points):
 
@@ -179,8 +180,8 @@ def get_grayscale(color_image, channel = None):
 
 	Parameters
 	----------
-	color_image : (MxNx3) numpy array
-		3-channel BGR-format color image as a numpy array
+	color_image : array_like, shape (MxNx3)
+		3-channel BGR-format color image
 	channel : {'blue', 'green', 'red', 'none', None}, default = None
 		The color channel to use for producing the grayscale image.
 		
@@ -229,8 +230,8 @@ def get_threshold(gray_image, block_size = 101, offset = 0):
 
 	Parameters
 	----------
-	gray_image : (MxNx1) numpy array
-		Single-channel grayscale image as a numpy array
+	gray_image : array_like, shape  (MxNx1)
+		Single-channel grayscale image
 	block_size : int, default = 1001
 		Odd value integer. Size of the local neighborhood for adaptive thresholding.
 	offset : default = 2
@@ -268,7 +269,8 @@ def get_contours(threshold_image):
 	----------
 	threshold_image : (MxNx1) numpy array
 		Binarized threshold image as a numpy array
-
+	gray_image : array_like, shape  (MxNx1)
+		Binarized threshold image
 	Returns
 	-------
 	contours : list
@@ -356,7 +358,7 @@ def test_edge_proximity(contour, edge_proximity, x_proximity, y_proximity):
 
 	return edge_proximity_test
 
-def get_pixels(image, points, template, max_side):
+def get_pixels(image, points, template, max_side, barcode_shape):
 
 	""" 
 	Use affine transform to extract pixel values of candidate barcodes from an image.
@@ -381,6 +383,7 @@ def get_pixels(image, points, template, max_side):
 	"""
 	M = cv2.getPerspectiveTransform(points.reshape((4,1,2)).astype(np.float32), template)
 	pixels = cv2.warpPerspective(image, M, (max_side, max_side), flags = (cv2.INTER_LINEAR), borderValue = 255)
+	pixels = cv2.resize(pixels, barcode_shape)
 
 	return pixels
 
@@ -546,7 +549,7 @@ def test_geometry(contour, area_min, area_max, area_sign, edge_proximity, x_prox
 				(polygon, polygon_area, perimeter) = get_polygon(contour, tolerance)
 				peri_area_ratio = perimeter/contour_area
 
-				if 100 > np.abs(peri_area_ratio) > 0:  # if perimeter_area_ratio is reasonable value...
+				if 1 > np.abs(peri_area_ratio) > 0:  # if perimeter_area_ratio is reasonable value...
 
 					geometry_test = test_quad(polygon, polygon_area, area_min, area_max, area_sign)
 
@@ -612,11 +615,15 @@ def get_candidate_barcodes(image, contours, barcode_shape, area_min, area_max, a
 			
 			if geometry_test == True:
 				points = get_points(polygon)
-				pixels = get_pixels(image, points, template, max_side).reshape((1,-1))
+				pixels = get_pixels(image, points, template, max_side, barcode_shape).reshape((1,-1))
 
 				points_array = np.append(points_array, points, axis = 0)
 				pixels_array = np.append(pixels_array, pixels, axis = 0)
-
+	subpix = points_array.reshape((points_array.shape[0]*points_array.shape[1], 1, points_array.shape[2])).astype(np.float32)
+	# termination criteria
+	criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 500, 0.0001)
+	subpix = cv2.cornerSubPix(image, subpix, (5,5), (-1,-1), criteria)
+	points_array = subpix.reshape(points_array.shape)
 	return (points_array, pixels_array)
 
 def match_barcodes(points_array, pixels_array, barcode_nn, id_list, id_index, distance_threshold):
@@ -654,7 +661,7 @@ def match_barcodes(points_array, pixels_array, barcode_nn, id_list, id_index, di
 	distances : ndarray
 		Array of distances for matched barcodes
 	"""
-
+    
 	distances, index = barcode_nn.kneighbors(pixels_array//255, n_neighbors=1)
 	distances = distances[:,0]
 	index = index[:,0]
@@ -855,14 +862,14 @@ def preprocess_pixels(points_array, pixels_array, var_thresh, barcode_shape, whi
 
 	return (points_array, pixels_array)
 
-def process_frame(frame, channel, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, template, max_side, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
+def process_frame(frame, channel, resize, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, template, max_side, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
 	"""
 	Process a single frame to track barcodes. 
 	
 	Parameters
 	----------
-	frame : (MxNx3) numpy array
-		3-channel BGR-format color image as a numpy array
+	frame : array_like, shape (MxNx3)
+		3-channel BGR-format color image
 	channel : {'blue', 'green', 'red', 'none', None}, default = None
 		The color channel to use for producing the grayscale image.
 	block_size : int, default = 1001
@@ -873,7 +880,7 @@ def process_frame(frame, channel, block_size, offset, barcode_shape, white_width
 	barcode_shape : tuple
 		The shape of the barcode with white border
 	white_width : int
-			The bit width of the white border around the barcode
+		The bit width of the white border around the barcode
 	area_min : float
 		Minimum area
 	area_max : float
@@ -919,6 +926,8 @@ def process_frame(frame, channel, block_size, offset, barcode_shape, white_width
 	distances = np.zeros((0,1))
 	
 	gray = get_grayscale(frame, channel=channel)
+	if resize > 1:
+		gray = cv2.resize(gray, (0,0), None, resize, resize)
 	gray = np.flipud(gray)
 	thresh = get_threshold(gray, block_size=block_size, offset=offset)
 	contours = get_contours(thresh)
@@ -955,4 +964,4 @@ def process_frame(frame, channel, block_size, offset, barcode_shape, white_width
 	if points_array.shape[0] > 0:                                                           
 		points_array = sort_corners(points_array, best_id_index)
 		
-	return (thresh, points_array, pixels_array, best_id_list, distances)
+	return (gray, thresh, points_array, pixels_array, best_id_list, distances)
