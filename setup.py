@@ -20,7 +20,7 @@ MAINTAINER = 'Jacob Graving'
 MAINTAINER_EMAIL = 'jgraving@gmail.com'
 URL = 'http://jakegraving.com'
 LICENSE = 'BSD (3-clause)'
-DOWNLOAD_URL = 'https://jgraving@bitbucket.org/jgraving/pinpoint.git'
+DOWNLOAD_URL = 'https://jgraving@github.com/jgraving/pinpoint.git'
 VERSION = '0.0.1'
 
 try:
@@ -50,6 +50,34 @@ def check_dependencies():
         import cv2
     except ImportError:
         install_requires.append('cv2')
+    try:
+        import pickle
+    except ImportError:
+        install_requires.append('pickle')
+    try:
+        import glob
+    except ImportError:
+        install_requires.append('glob')
+    try:
+        import sklearn
+    except ImportError:
+        install_requires.append('sklearn')
+    try:
+        import h5py
+    except ImportError:
+        install_requires.append('h5py')
+    try:
+        import numba
+    except ImportError:
+        install_requires.append('numba')
+    try:
+        import types
+    except ImportError:
+        install_requires.append('types')
+    try:
+        import warnings
+    except ImportError:
+        install_requires.append('warnings')
 
     return install_requires
 

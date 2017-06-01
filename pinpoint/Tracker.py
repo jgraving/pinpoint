@@ -24,13 +24,13 @@ import matplotlib.pyplot as plt
 import datetime as dt
 import os.path
 import utils as utils
-from TagDictionary import TagDictionary
+from .TagDictionary import TagDictionary
 
 from sklearn.neighbors import NearestNeighbors
 
 import h5py
 
-from utils import process_frame
+from .utils import process_frame
 
 from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
 import warnings
