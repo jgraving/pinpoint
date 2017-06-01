@@ -241,7 +241,7 @@ class TagDictionary:
 		self.master_list = config["master_list"]
 		self.id_list = config["id_list"]
 		self.tag_shape = config["tag_shape"]
-		self.distance = config["distance"]
+		#self.distance = config["distance"]
 		self.white_width = config["white_width"]
 		self.black_width = config["black_width"]
 		self.white_shape = tuple([x+(self.white_width*2) for x in self.tag_shape])
