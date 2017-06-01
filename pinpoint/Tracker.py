@@ -7,7 +7,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -28,6 +28,10 @@ from TagDictionary import TagDictionary
 
 from sklearn.neighbors import NearestNeighbors
 
+import h5py
+
+from utils import process_frame
+
 from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
 import warnings
 
@@ -35,522 +39,233 @@ cv2.setNumThreads(-1)
 
 __all__ = ['Tracker']
 
+class VideoReader:
+	
+	def __init__(self, path):
+		
+		self.stream = cv2.VideoCapture(path)
+		self._total_frames = int(self.stream.get(cv2.CAP_PROP_FRAME_COUNT))
+		self._fps = self.stream.get(cv2.CAP_PROP_FPS)
+		self._codec = self.stream.get(cv2.CAP_PROP_FOURCC)
+		self._height = self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
+		self._width = self.stream.get(cv2.CAP_PROP_FRAME_WIDTH)
+		self._finished = False
 
-from sklearn.neighbors import NearestNeighbors
-import h5py
+	def read(self):
+		ret, frame = self.stream.read()
+		if ret:
+			return frame
+		else:
+			self._finished = True
+	
+	def read_batch(self, batch_size=8):
+		frames = []
+		for idx in range(batch_size):
+			ret, frame = self.stream.read()
+			if ret:
+				frames.append(frame)
+			else:
+				self._finished = True
+		return frames
+	
+	def close(self):
+		self.stream.release()
+		return not self.stream.isOpened()
+	
+	def current_frame(self):
+		return int(self.stream.get(cv2.CAP_PROP_POS_FRAMES))
+	
+	def current_time(self):
+		return self.stream.get(cv2.CAP_PROP_POS_MSEC)
+	
+	def percent_finished(self):
+		return self.stream.get(cv2.CAP_PROP_POS_AVI_RATIO) * 100
+	
+	def fps(self):
+		return self._fps
+	
+	def codec(self):
+		return self._codec
+	
+	def height(self):
+		return self._height
+	
+	def width(self):
+		return self._width
+	
+	def total_frames(self):
+		return self._total_frames
+	
+	def finished(self):
+		return self._finished
 
 class Tracker(TagDictionary, VideoReader):
-    
-    def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green', resize=1):
-        
-        VideoReader.__init__(self, source)
-        TagDictionary.__init__(self)
-        self.area_min = area_range[0]
-        self.area_max = area_range[1]
-        self.tolerance = tolerance
-        self.distance_threshold = distance_threshold
-        self.block_size = block_size
-        self.offset = offset
-        self.channel = channel
-        self.var_thresh = var_thresh
-        self.resize = resize
-        self.frame_width = self.width()
-        self.frame_height = self.height()
-        self.x_proximity = (self.frame_width*self.resize)-1
-        self.y_proximity = (self.frame_height*self.resize)-1
-
-        
-    def track(self, batch_size=8):
-        self.h5file = h5py.File('test.h5', 'w')
-        dgroup = self.h5file.create_group('data')
-        
-        frame_idx_dset = dgroup.create_dataset('frame_idx', shape=(0,), dtype=np.int64, maxshape=(None,))
-        corners_dset = dgroup.create_dataset('corners', shape=(0,4,2), dtype=np.float64, maxshape=(None,4,2))
-        identity_dset = dgroup.create_dataset('identity', shape=(0,), dtype=np.int32, maxshape=(None,))
-        distances_dset = dgroup.create_dataset('distances', shape=(0,), dtype=np.int32, maxshape=(None,))
-        
-        dset_list = [frame_idx_dset, corners_dset, identity_dset, distances_dset]
-        
-        self.barcode_shape = self.white_shape
-        max_side=100
-        template = get_tag_template(max_side)
-        
-        self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='ball_tree')
-        self.barcode_nn.fit(self.barcode_list)
-        #dists = []
-        idx = 0
-        while not self.finished():
-        #for idx in range(1):
-            frames = self.read_batch(batch_size)
-            for frame in frames:
-                gray, thresh, points_array, pixels_array, best_id_list, distances = process_frame(frame=frame,
-                                                                                           channel=self.channel,
-                                                                                           resize=self.resize,
-                                                                                           block_size=self.block_size,
-                                                                                           offset = self.offset,
-                                                                                           barcode_shape=self.barcode_shape,
-                                                                                           white_width=self.white_width,
-                                                                                           area_min=self.area_min,
-                                                                                           area_max=self.area_max,
-                                                                                           x_proximity=self.x_proximity,
-                                                                                           y_proximity=self.y_proximity,
-                                                                                           tolerance=self.tolerance,
-                                                                                           max_side=max_side,
-                                                                                           template=template,
-                                                                                           var_thresh=self.var_thresh,
-                                                                                           barcode_nn=self.barcode_nn,
-                                                                                           id_list=self.id_list,
-                                                                                           id_index=self.id_index,
-                                                                                           distance_threshold=self.distance_threshold,
-                                                                                          )
-                points_array = points_array / self.resize
-                frame_idx = np.repeat(idx, points_array.shape[0])
-                idx += 1
-                data_list = [frame_idx, points_array, best_id_list, distances]
-                for (dset, data) in zip(dset_list, data_list):
-                    
-                    current_shape = list(dset.shape)
-                    current_size = current_shape[0]
-                    
-                    new_shape = current_shape
-                    new_shape[0] = new_shape[0]+data.shape[0]
-                    new_size = new_shape[0]
-                    
-                    dset.resize(tuple(new_shape))
-                    dset[current_size:new_size] = data
-        
-        
-        self.h5file.close()
-        return (gray, thresh, pixels_array, points_array, best_id_list, distances)
-        
-
-
-class Tracker(TagDictionary):
+	"""
 	
-	"""Initializes a Tracker.
+	Process a video to track barcodes. 
 
 	Parameters
 	----------
-	source : int or str
-		The source for tracking. 
-
+	block_size : int, default = 1001
+		Odd value integer. Size of the local neighborhood for adaptive thresholding.
+	offset : default = 2
+		Constant subtracted from the mean for adaptive thresholding. Normally, it is positive but may be zero or negative as well. 
+		The threshold value is calculated as the mean of the block_size x block_size neighborhood *minus* offset.
+	area_range : tuple, default (10,10000)
+		Area range in pixels for potential barcodes. If the minimum value is too low this can lead to false positives.
+	tolerance : int or float, default = 0.1
+		This parameter affects how many many contours reach the barcode matching algorithm, 
+		as only polygons with 4 vertices are used. This is the toleracne for fitting a polygon as a 
+		proportion of the perimeter of the contour. This value is used to set epsilon, which is the 
+		maximum distance between the original contour and its polygon approximation. 
+		Higher values decrease the number of vertices in the polygon.
+		Lower values increase the number of vertices in the polygon. 
+	distance_threshold : int, default = 8
+		The maximum Hamming distance between a barcode candidate and its matched identity.
+		Set this to some high value to save all candidates.
+	var_thresh : float, (default = 500)
+		Minimum variance threshold. Candidate barcodes with low variance are likely white or black blobs.
+	channel : {'blue', 'green', 'red', 'none', None}, default = None
+		The color channel to use for producing the grayscale image.
+	resize : float, default=1
+		The scalar for resizing images. In most cases, increasing the size of the image can improve edge detection
+		which leads to better barcode reconstruction at the expense of computation time. The recommended setting is
+		some value between 1.0 and 2.0
+	
 	Returns
 	-------
 	self : class
-		the Tracker class 
+		Tracker class instance
 	
-	Notes
-	-------
-	The source can be an integer value for a webcam device index or a filepath string to a video file (e.g. "/path/to/file/video.mp4")
-
 	"""
-
-	def __init__(self, source):
+	def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel=None, resize=1):
 		
-		self.source = source
-
-		if type(self.source) not in [IntType, StringType]:
-			raise TypeError("source must be type int or str")
-		
-		if type(self.source) is StringType:
-
-			if os.path.splitext(self.source)[1] in [".jpg",".JPG",".png",".PNG",".jpeg",".JPEG",".tiff",".TIFF",".gif",".GIF",".bmp",".BMP"]: 
-				self.source_type = "images"
-				raise IOError("Images not yet supported")
-			else:
-				self.source_type = "video"
-
-		elif type(self.source) is IntType:
-			self.source_type = "camera"
-
-		self.cap = cv2.VideoCapture(self.source)
-
-		assert self.cap.isOpened(), "Video source failed to open. \nCheck that your camera is connected or that the video file exists."
-		
-		ret, frame = self.cap.read()
-		assert ret, "Video source opened but failed to read any images. \nCheck that the camera is working or the video is a valid file"
-		
-		self.frame_height = int(self.cap.get(cv2.CAP_PROP_FRAME_HEIGHT))
-		self.frame_width = int(self.cap.get(cv2.CAP_PROP_FRAME_WIDTH))
-
-		if self.source_type == "video":
-			self.fps = self.cap.get(cv2.CAP_PROP_FPS)
-		else:
-			self.fps = 29.97
-		
-		self.roi_pt1 = (0,0)
-		self.roi_pt2 = (self.frame_width-1,self.frame_height-1)
-
-		self.area_min = 1
-		self.area_max = 10000
-
-		self.blur_size = 1
-		self.blur_sigma = 0
-
-		self.savefile = None
-
-		self.edge_proximity = 1
-
-		self.channel = None
-
-		self.tolerance = 0.1
-		
-		self.cap.release()
-
-	def show_video(self, resize = 1):
-
-		"""Shows video source. Press `esc` to exit
-
-			Parameters
-			----------
-			resize : float, default = 1
-				resize factor for showing the video source. 1 = original size
-			video_output : str, default = None
-				Saves the stream to a file as .mp4, i.e. "/path/to/video.mp4".
-				If None, no video is saved.
-		"""
-
-		if type(resize) not in [IntType, FloatType]:
-			raise TypeError("resize must be type int or float")
-		if resize <= 0:
-			raise ValueError("resize must be positive, non-zero value")
-		
-		print("Showing video source. Press `esc` to exit.")
-
-		cap = cv2.VideoCapture(self.source)
-
-		video_title = "Video (press `esc` to exit)."
-
-		cv2.startWindowThread()
-		EXIT = False
-		while (cap.isOpened() and EXIT == False):
-			ret,frame = cap.read()
-			if ret:
-				if resize != 1.:
-					frame = cv2.resize(frame, (0,0), None, fx = resize, fy = resize) 
-
-				cv2.imshow(video_title, frame)
-
-			elif cap.get(cv2.CAP_PROP_POS_FRAMES) == cap.get(cv2.CAP_PROP_FRAME_COUNT):
-				EXIT = True
-
-			if cv2.waitKey(1) & 0xff == 27:
-				EXIT = True
-
-		cap.release()
-		cv2.destroyAllWindows()
-
-		for i in range(10):
-			cv2.waitKey(1)
-
-		print("Succesfully exited.")
-
-	def show_image(self, frame_number = None, figsize = (10,10), image_output = None):
-
-		"""Capture and show a still image from the video source.
-			Parameters
-			----------
-			frame_number : int, default = None
-				Frame number to show from the video. If None, the first frame is used.
-			figsize : tuple of int, default = (10,10)
-				Figure size for showing the image with matplotlib
-			image_output : str, default = None
-				Saves the image to a file. If None, no image is saved.
-		"""
-
-		if type(image_output) not in [NoneType, StringType]:
-			raise TypeError("image_output must be type str or None")
-		if image_output is not None:
-			if os.path.splitext(image_output)[1] not in [".jpg",".png",".jpeg",".tiff"]:
-				raise IOError("Output file must be .jpg, .jpeg, .png, or .tiff")
-		if frame_number is not None and self.source_type == 'camera':
-			raise IOError("Cannot specify frame_number with camera source")
-		if type(frame_number) not in [NoneType, IntType]:
-			raise TypeError("frame_number must be type int or None")
-		
-		
-		cap = cv2.VideoCapture(self.source)
-		cv2.waitKey(100)
-
-		if frame_number != None:
-			cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-
-		ret, image = cap.read()
-		cap.release()
-		plt.figure(figsize = figsize)
-		image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
-		plt.imshow(image)
-		plt.title(str(image.shape[1]) +"x"+ str(image.shape[0]))
-		plt.show()
-
-		if image_output != None:
-			cv2.imwrite(image_output, still)
-
-	def set_roi(self, pt1, pt2, imshow = True, figsize = (20,6), frame_number = None):
-		"""Set the region of interest for the tracker.
-
-			Parameters
-			----------
-			pt1 : tuple of int
-				top left point (x,y) of the region of interest
-			pt2 : tuple of int
-				bottom right point (x,y) of the region of interest
-			imshow : bool, default = True
-				Shows a image with the area of interest drawn over top
-			figsize : tuple of int, default = (20,6)
-				The size of the imshow image
-			frame_number : int, default = None
-				Frame number to show from the video 
-		"""
-
-		if not (type(pt1) is TupleType and type(pt2) is TupleType):
-			raise TypeError("pt1 and pt2 must be type tuple")
-		if not (len(pt1) == 2 and len(pt2) == 2):
-			raise ValueError("pt1 and pt2 must be length 2")
-		if not (all([isinstance(pt, IntType) for pt in pt1]) and all([isinstance(pt, IntType) for pt in pt2])): 
-			raise TypeError("pt1 and pt2 must contain only type int")
-		if type(frame_number) not in [NoneType, IntType]:
-			raise TypeError("frame_number must be type int or None")
-		if not (frame_number is None and self.source_type is StringType):
-				raise ValueError("Cannot specify frame_number with camera source")
-
-		self.roi_pt1 = pt1
-		self.roi_pt2 = pt2
-
-		cap = cv2.VideoCapture(self.source)
-		cv2.waitKey(100)
-
-		if frame_number != None:
-			cap.set(cv2.CAP_PROP_POS_FRAMES, frame_number)
-
-		ret, still = cap.read()
-		cap.release()
-
-		still = cv2.cvtColor(still, cv2.COLOR_BGR2RGB)
-		cropped = utils.crop(still, self.roi_pt1, self.roi_pt2)
-
-		self.frame_height = cropped.shape[0]
-		self.frame_width = cropped.shape[1]
-
-		if imshow == True:
-			fig, (ax1,ax2) = plt.subplots(1, 2, figsize = figsize)
-			roi = cv2.rectangle(still.copy(), pt1, pt2, (0,255,0), 3)
-			ax1.imshow(roi)
-			ax1.set_title("Region of Interest")
-
-			ax2.imshow(cropped)
-			ax2.set_title(str(self.frame_width) +"x"+ str(self.frame_height))
-			plt.tight_layout()
-			plt.show()
-
-	def set_area(self, area_min = 1, area_max = 10000):
-		"""Set the area range for the tracker.
-
-			Parameters
-			----------
-			area_min : int, default = 10
-				Minimum area a contour must have to be tracked
-			area_max : int, default = 10000
-				Maximum area a contour can have to be tracked
-		"""
-
-		if type(area_min) is not IntType:
-			raise TypeError("area_min must be type int")
-		if type(area_max) is not IntType:
-			raise TypeError("area_max must be type int")
-
-		self.area_min = area_min
-		self.area_max = area_max
-
-	def set_threshold(self, block_size = 1001, offset = 0):
-		"""Set the adaptive threshold parameters for the tracker.
-
-			Parameters
-			----------
-			block_size : int, default = 1001
-				Odd value integer. Size of the local neighborhood for adaptive thresholding.
-			offset : default = 0
-				Constant subtracted from the mean. It may be positive, zero, or negative.
-			Notes
-			----------	
-			The threshold value T(x,y) is calculated as the mean of the block_size x block_size neighborhood minus offset.
-		"""
-
-		if block_size % 2 != 1:
-			raise ValueError("block_size must be an odd value (block_size % 2 == 1)")
-		if type(offset) not in [int, float]:
-			raise TypeError("offset must be type int or float")
-
+		VideoReader.__init__(self, source)
+		TagDictionary.__init__(self)
+		self.area_min = area_range[0]
+		self.area_max = area_range[1]
+		self.tolerance = tolerance
+		self.distance_threshold = distance_threshold
 		self.block_size = block_size
 		self.offset = offset
-
-	def set_color_channel(self, channel = None):
-
-		"""Set the color channel for generating a grayscale image from a color image.
-
-			Parameters
-			----------
-			channel : str, default = None
-				The color channel to use for producing the grayscale image.
-
-			Notes
-			----------
-			None uses the default linear transformation from OpenCV: 
-			Y = 0.299R + 0.587G + 0.114B
-			Channels 'blue', 'green', and 'red' use the respective color channel as the grayscale image. 
-			Under white, broad-spectrum ambient lighting, 'green' typically provides the lowest noise.
-		"""
-
-		if type(channel) not in [StringType, NoneType]:
-			raise TypeError("channel must be type str or None")
-		if type(channel) is StringType and not (channel.startswith('b') or channel.startswith('g') or channel.startswith('r')):
-			raise ValueError("channel value must be 'blue', 'green', 'red', or None")
-
 		self.channel = channel
+		self.var_thresh = var_thresh
+		self.resize = resize
+		self.frame_width = self.width()
+		self.frame_height = self.height()
+		self.x_proximity = (self.frame_width*self.resize)-1
+		self.y_proximity = (self.frame_height*self.resize)-1
 
-	def set_tolerance(self, tolerance = 0.1):
-		"""Set the polygon tolerance for the tracker.
-
-			Parameters
-			----------
-			tolerance : int or float, default = 0.1
-				Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
-
-			Notes
-			----------
-			This value is used to set epsilon, which is the maximum distance between the original contour and its polygon approximation. 
-			Higher values decrease the number of vertices in the polygon.
-			Lower values increase the number of vertices in the polygon.
-			This parameter affects how many many contours reach the barcode matching algorithm, as only polygons with 4 vertices are used.
+		
+	def track(self, filename='output.h5', batch_size=8):
+		
 		"""
+		Process frames to track barcodes. Saves data to hdf5 file. See `Notes` for details.
 
-		if type(tolerance) not in [IntType, FloatType]:
-			raise TypeError("tolerance must be type int or float")
-		if tolerance >= 1:
-			warnings.warn("A tolerance value <1.0 is recommended")
-
-		self.tolerance = tolerance
-
-	def track(self, data_output = None, video_output = None):
-
-		"""Starts the tracker with options to save the tracking data and record video to a file.
-
-			Parameters
-			----------
-			data_output : str, default = None
-				File path to the text file where the data will be stored as comma separated values.
-				Must be file extension .txt or .csv
-				If None, no data will be stored.
-			video_output. : str, default = None
-				File path to the video file where the output video will be stored as MPEG-4.
-				Must be file extension .mp4 or .MP4
-				If None, no video will be recorded.
-
-		"""
-
-		if type(data_output) not in [StringType, NoneType]:
-			raise TypeError("data_output must be type str or None")
-		if data_output is not None and os.path.splitext(data_output)[1] not in [".csv",".txt"]:
-			raise IOError("Data file must be .csv, or .txt")
-
-		if type(video_output) not in [StringType, NoneType]:
-			raise TypeError("video_output must be type str or None")
-		if video_output is not None and os.path.splitext(video_output)[1] not in [".MP4",".mp4"]:
-			raise IOError("Video output file must be .mp4")
-
-		timestamp = dt.datetime.now()
-		frame_number = 0
-
-		if data_output is not None:
-
-			directory = os.path.dirname(data_output)
-			if not os.path.exists(directory):
-				os.makedirs(directory)
-
-			self.savefile = open(data_output,"w+")
-
-			if self.source_type == 'video':
-				write_str = "msec" + "," + "frame_number" + "," + "id" + "," + "correlation" + "," + "x" + "," + "y" + "," + "orientation" + "\n"
-			elif self.source_type == 'camera':
-				write_str = "msec" + "," + "frame_number" + "," + "id" + "," + "correlation" + "," + "x" + "," + "y" + "," + "orientation" + "\n"
+		Parameters
+		----------
+		filename : str, default = 'output.h5'
+			The file to save data to. 
+		batch_size : int, default is 8
+			The number of frames to process in each batch.
 			
-			self.savefile.write(write_str)
+		Notes
+		-----
+		The tracker outputs data as an hdf5 file with the following structure:
+			--filename
+			----/data
+			------/frame_idx
+			------/corners
+			------/identity
+			------/distances
+		frame_idx : ndarray, dtype=int, shape (n_samples, 1)
+			the frame index number from the video for each sample 
+		corners : ndarray, dtype=float, shape (n_samples, 4, 2)
+			The corners for each barcode for all frames
+		identity : ndarray, dtype=int, shape (n_samples, 1)
+			The nearest identity for each sample
+		distances : ndarray, dtype=int, shape (n_samples, 1)
+			The Hamming distance for each sample to the 
+			nearest neighbor from the barcode dictionary
+			
+			
+		Returns
+		-------
+		gray : ndarray, (height, width, 1)
+			Single-channel grayscale image from the most recent frame
+		thresh : ndarray, (height, width, 1)
+			Single-channel threshold image from the most recent frame
+		points_array : ndarray, shape (n_samples, 4, 2)
+			Array of coordinates for barcodes from the most recent frame
+		pixels_array : ndarray, shape (n_samples, n_pixels)
+			Array of flattened pixels for barcodes from the most recent frame
+		best_id_list : ndarray, dtype=int, shape (n_samples, 1)
+			The nearest identity for each sample
+		distances : ndarray, dtype=int, shape (n_samples, 1)
+			The Hamming distance for each sample to the 
+			nearest neighbor from the barcode dictionary
+		"""
+		
+		self.h5file = h5py.File(filename, 'w')
+		dgroup = self.h5file.create_group('data')
+		
+		frame_idx_dset = dgroup.create_dataset('frame_idx', shape=(0,), dtype=np.int64, maxshape=(None,))
+		corners_dset = dgroup.create_dataset('corners', shape=(0,4,2), dtype=np.float64, maxshape=(None,4,2))
+		identity_dset = dgroup.create_dataset('identity', shape=(0,), dtype=np.int32, maxshape=(None,))
+		distances_dset = dgroup.create_dataset('distances', shape=(0,), dtype=np.int32, maxshape=(None,))
+		
+		dset_list = [frame_idx_dset, corners_dset, identity_dset, distances_dset]
+		
+		self.barcode_shape = self.white_shape
+		max_side=100
+		template = get_tag_template(max_side)
+		
+		self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='ball_tree')
+		self.barcode_nn.fit(self.barcode_list)
+		#dists = []
+		idx = 0
+		try:
+			while not self.finished():
+			#for idx in range(1):
+				frames = self.read_batch(batch_size)
+				for frame in frames:
+					gray, thresh, points_array, pixels_array, best_id_list, distances = process_frame(frame=frame,
+																							   channel=self.channel,
+																							   resize=self.resize,
+																							   block_size=self.block_size,
+																							   offset = self.offset,
+																							   barcode_shape=self.barcode_shape,
+																							   white_width=self.white_width,
+																							   area_min=self.area_min,
+																							   area_max=self.area_max,
+																							   x_proximity=self.x_proximity,
+																							   y_proximity=self.y_proximity,
+																							   tolerance=self.tolerance,
+																							   max_side=max_side,
+																							   template=template,
+																							   var_thresh=self.var_thresh,
+																							   barcode_nn=self.barcode_nn,
+																							   id_list=self.id_list,
+																							   id_index=self.id_index,
+																							   distance_threshold=self.distance_threshold,
+																							  )
+					points_array = points_array / self.resize
+					frame_idx = np.repeat(idx, points_array.shape[0])
+					idx += 1
+					data_list = [frame_idx, points_array, best_id_list, distances]
+					for (dset, data) in zip(dset_list, data_list):
 
-		self.cap = cv2.VideoCapture(self.source)
+						current_shape = list(dset.shape)
+						current_size = current_shape[0]
 
-		self.total_frames = self.cap.get(cv2.CAP_PROP_FRAME_COUNT)
+						new_shape = current_shape
+						new_shape[0] = new_shape[0]+data.shape[0]
+						new_size = new_shape[0]
 
-		if video_output is not None:
-			fourcc = cv2.VideoWriter_fourcc("A","V","C","1")
-			out = cv2.VideoWriter(video_output, fourcc, self.fps, (self.frame_width,self.frame_height), True)
+						dset.resize(tuple(new_shape))
+						dset[current_size:new_size] = data
 
-		cv2.namedWindow("Tracker")
-		cv2.startWindowThread()
-
-		self.x_proximity = self.frame_width - self.edge_proximity - 1
-		self.y_proximity = self.frame_height - self.edge_proximity - 1
-
-		max_side = 7
-
-		dst = utils.get_warp_dst(max_side)
-
-		while cap.isOpened():
-
-			ret, frame = cap.read()
-
-			if self.source_type == 'camera':
-				frame_number += 1
-			if self.source_type == 'video':
-				frame_number = cap.get(cv2.CAP_PROP_POS_FRAMES)
-
-			if ret:
-				cropped = utils.crop(frame, self.pt1, self.pt2)
-				gray = utils.get_grayscale(cropped, channel = self.channel)
-				thresh = utils.get_threshold(gray, block_size = self.block_size, offset = self.offset)
-				contours = utils.get_contours(thresh)
-
-				(points_array, pixels_array) = utils.get_candidate_barcodes(image = gray,
-																			contours = contours,
-																			barcode_size = self.barcode_size,
-																			area_min = self.area_min,
-																			area_max = self.area_max,
-																			area_sign = self.area_sign,
-																			edge_proximity = self.edge_proximity,
-																			x_proximity = self.x_proximity,
-																			y_proximity = self.y_proximity,
-																			tolerance = self.tolerance
-																			)
-
-				if points_array is not None and pixels_array is not None:
-					
-
-					
-
-				if data_output != None:
-					if self.source_type == 'video':
-						write_str = str(cap.get(cv2.CAP_PROP_POS_MSEC)) + "," + str(frame_number) + "," + str(mcx) + "," + str(mcy) + "\n"
-					#elif self.source_type == 'camera':
-					#	write_str = str(time) + "," + str(frame_number) + "," + str(mcx) + "," + str(mcy) + "\n"
-					self.savefile.write(write_str)
-				
-				cv2.imshow("Tracker",frame)
-
-				if video_output != None:
-					out.write(frame)
-								
-			k = cv2.waitKey(int(self.delay*1000)) & 0xff
-			if k == 27:
-				break
-			elif frame_number == total_frames:
-				break
-		 
-		cap.release()
-		cv2.destroyWindow("Tracker")
-
-		if data_output != None:
-			self.savefile.close()     
-		if video_output != None:
-			out.release()
-
-		for i in range(10):
-			cv2.waitKey(1)
+		except KeyboardInterrupt:
+			self.h5file.close()
+			
+		return (gray, thresh, points_array, pixels_array, best_id_list, distances)
