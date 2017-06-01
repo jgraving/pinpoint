@@ -23,7 +23,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import datetime as dt
 import os.path
-import utils as utils
+
 from .TagDictionary import TagDictionary
 
 from sklearn.neighbors import NearestNeighbors
@@ -109,10 +109,12 @@ class Tracker(TagDictionary, VideoReader):
 	block_size : int, default = 1001
 		Odd value integer. Size of the local neighborhood for adaptive thresholding.
 	offset : default = 2
-		Constant subtracted from the mean for adaptive thresholding. Normally, it is positive but may be zero or negative as well. 
-		The threshold value is calculated as the mean of the block_size x block_size neighborhood *minus* offset.
+		Constant subtracted from the mean for adaptive thresholding. Normally, it is positive but 
+		may be zero or negative as well. The threshold value is calculated as the mean of the 
+		block_size x block_size neighborhood *minus* the offset.
 	area_range : tuple, default (10,10000)
-		Area range in pixels for potential barcodes. If the minimum value is too low this can lead to false positives.
+		Area range in pixels for potential barcodes. If the minimum value is too low this
+		can lead to false positives.
 	tolerance : int or float, default = 0.1
 		This parameter affects how many many contours reach the barcode matching algorithm, 
 		as only polygons with 4 vertices are used. This is the toleracne for fitting a polygon as a 
@@ -127,9 +129,10 @@ class Tracker(TagDictionary, VideoReader):
 		Minimum variance threshold. Candidate barcodes with low variance are likely white or black blobs.
 	channel : {'blue', 'green', 'red', 'none', None}, default = None
 		The color channel to use for producing the grayscale image.
-	resize : float, default=1
-		The scalar for resizing images. In most cases, increasing the size of the image can improve edge detection
-		which leads to better barcode reconstruction at the expense of computation time. The recommended setting is
+	resize : float, default=1.0
+		The scalar for resizing images. In most cases, increasing the size of the image 
+		can improve edge detection which leads to better barcode reconstruction 
+		at the expense of computation time. The recommended setting is
 		some value between 1.0 and 2.0
 	
 	Returns
@@ -138,12 +141,12 @@ class Tracker(TagDictionary, VideoReader):
 		Tracker class instance
 	
 	"""
-	def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel=None, resize=1):
+	def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green', resize=1.0):
 		
 		VideoReader.__init__(self, source)
 		TagDictionary.__init__(self)
-		self.area_min = area_range[0]
-		self.area_max = area_range[1]
+		self.area_min = area_range[0]*(resize**2)
+		self.area_max = area_range[1]*(resize**2)
 		self.tolerance = tolerance
 		self.distance_threshold = distance_threshold
 		self.block_size = block_size
