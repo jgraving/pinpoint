@@ -102,7 +102,7 @@ class VideoReader:
 class Tracker(TagDictionary, VideoReader):
 	"""
 	
-	Process a video to track barcodes. 
+	Tracker class for processing videos to track barcodes. 
 
 	Parameters
 	----------
