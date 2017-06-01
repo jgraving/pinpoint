@@ -30,7 +30,7 @@ from sklearn.neighbors import NearestNeighbors
 
 import h5py
 
-from .utils import process_frame
+from .utils import process_frame, get_tag_template
 
 from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
 import warnings
