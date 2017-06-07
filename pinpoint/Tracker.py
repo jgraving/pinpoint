@@ -273,5 +273,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 		except KeyboardInterrupt:
 			self.h5file.close()
-			
+		
+		self.h5file.close()
+
 		return (gray, thresh, points_array, pixels_array, best_id_list, distances)
