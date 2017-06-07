@@ -83,7 +83,7 @@ class CameraCalibration:
 				gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
 				# Find the chess board corners
-				ret, corners = cv2.findChessboardCorners(gray, self.grid_shape, None, flags = (cv2.CALIB_CB_ADAPTIVE_THRESH))
+				ret, corners = cv2.findChessboardCorners(gray, self.grid_shape, None, flags = (cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FILTER_QUADS + cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_NORMALIZE_IMAGE))
 				#ret, corners = cv2.findCirclesGrid(gray, grid_shape, None, flags = (cv2.CALIB_CB_ASYMMETRIC_GRID))
 	            
 	            # If found, add object points, image points (after refining them)
@@ -154,10 +154,10 @@ class CameraCalibration:
 		"""
 
 		h,  w = image.shape[:2]
-		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
+		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(self.mtx, self.dist, (w,h), 1, (w,h))
 
 		# undistort
-		mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w,h), 5)
+		mapx, mapy = cv2.initUndistortRectifyMap(self.mtx, self.dist, None, newcameramtx, (w,h), 5)
 		dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
 
 		# crop the image
