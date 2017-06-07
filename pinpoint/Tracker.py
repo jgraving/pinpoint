@@ -271,9 +271,11 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 						dset.resize(tuple(new_shape))
 						dset[current_size:new_size] = data
 
+			self.h5file.close()
+			
 		except KeyboardInterrupt:
 			self.h5file.close()
 		
-		self.h5file.close()
+
 
 		return (gray, thresh, points_array, pixels_array, best_id_list, distances)
