@@ -25,6 +25,7 @@ import datetime as dt
 import os.path
 
 from .TagDictionary import TagDictionary
+from .CameraCalibration import CameraCalibration
 
 from sklearn.neighbors import NearestNeighbors
 
@@ -99,7 +100,7 @@ class VideoReader:
 	def finished(self):
 		return self._finished
 
-class Tracker(TagDictionary, VideoReader):
+class Tracker(TagDictionary, VideoReader, CameraCalibration):
 	"""
 	
 	Tracker class for processing videos to track barcodes. 
@@ -141,10 +142,12 @@ class Tracker(TagDictionary, VideoReader):
 		Tracker class instance
 	
 	"""
+
 	def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green', resize=1.0):
 		
 		VideoReader.__init__(self, source)
 		TagDictionary.__init__(self)
+		CameraCalibration.__init__(self)
 		self.area_min = area_range[0]*(resize**2)
 		self.area_max = area_range[1]*(resize**2)
 		self.tolerance = tolerance
