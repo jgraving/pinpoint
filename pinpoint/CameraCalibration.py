@@ -42,7 +42,7 @@ class CameraCalibration:
 
 	def calibrate(self, image_files, imshow = True, delay = 500):
 
-		""" Returns calibration parameters from calibration images
+		""" Calculates calibration parameters from calibration images
 
 			Parameters
 			----------
@@ -133,7 +133,7 @@ class CameraCalibration:
 		return self
 
 
-	def undistort_image(self, image, crop = True):
+	def undistort(self, image, crop = True):
 
 		""" Returns undistorted image using calibration parameters.
 
@@ -153,13 +153,12 @@ class CameraCalibration:
 
 		"""
 
-		img = image
-		h,  w = img.shape[:2]
+		h,  w = image.shape[:2]
 		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(mtx, dist, (w,h), 1, (w,h))
 
 		# undistort
 		mapx, mapy = cv2.initUndistortRectifyMap(mtx, dist, None, newcameramtx, (w,h), 5)
-		dst = cv2.remap(img, mapx, mapy, cv2.INTER_LINEAR)
+		dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
 
 		# crop the image
 		if crop:
