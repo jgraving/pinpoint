@@ -127,17 +127,17 @@ class TagDictionary:
 			self.random_seed = new_seed
 
 		if verbose:
-			print "Generating tags. This may take awhile..."
+			print("Generating tags. This may take awhile...")
 
 		for idx in np.arange(0, self.niter + 1): # generate some tags
 
 			if verbose and idx % 10000 == 0 and idx > 0 and type(self.master_list) != NoneType:
-				print "Iteration: " + str(idx) + "/" + str(self.niter)
-				print "Tags found: ", len(self.master_list)//4
+				print("Iteration: " + str(idx) + "/" + str(self.niter))
+				print("Tags found: ", len(self.master_list)//4)
 
 			if verbose and idx == self.niter and type(self.master_list) != NoneType:
-				print "Iteration: " + str(idx) + "/" + str(self.niter)
-				print "Tags found: ", len(self.master_list)//4
+				print("Iteration: " + str(idx) + "/" + str(self.niter))
+				print("Tags found: ", len(self.master_list)//4)
 
 			new_tag = np.random.randint(0,2, size=(self.tag_len)).astype(np.uint8) # randomly generate a tag
 
@@ -171,7 +171,7 @@ class TagDictionary:
 		self.id_list = get_id_list(self.ntags)
 	
 		if verbose:
-			print "Done!"
+			print("Done!")
             
 		self.barcode_list = add_white_border(self.master_list, self.tag_shape, self.white_width)
         
