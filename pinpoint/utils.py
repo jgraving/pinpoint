@@ -18,7 +18,7 @@ import numpy as np
 import cv2
 from numba import jit
 from warnings import warn
-from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
+
 from sklearn.metrics.pairwise import pairwise_distances
 
 def rotate_tag90(tag, tag_shape, n=1):
@@ -197,10 +197,11 @@ def get_grayscale(color_image, channel = None):
 	Under white ambient lighting, 'green' typically provides the lowest noise. Under red and infrared lighting, 'red' typically provides the lowest noise.
 
 	"""
-	if type(channel) not in [StringType, NoneType]:
+	if type(channel) not in [str, type(None)]:
 		raise TypeError("Channel must be type str or None")
-	if type(channel) is StringType and not (channel.startswith('b') or channel.startswith('g') or channel.startswith('r')):
-		raise ValueError("Channel value must be 'blue', 'green', 'red', or None")
+	if type(channel) is str:
+		if not (channel.startswith('b') or channel.startswith('g') or channel.startswith('r')):
+			raise ValueError("Channel value must be 'blue', 'green', 'red', or None")
 	if type(color_image) is not np.ndarray:
 		raise TypeError("image must be a numpy array")
 
@@ -247,7 +248,7 @@ def get_threshold(gray_image, block_size = 101, offset = 0):
 
 	if block_size % 2 != 1:
 		raise ValueError("block_size must be an odd value (block_size % 2 == 1)")
-	if type(offset) not in [IntType, FloatType]:
+	if type(offset) not in [int, float]:
 		raise TypeError("offset must be type int or float")
 	if type(gray_image) is not np.ndarray:
 		raise TypeError("image must be a numpy array")
