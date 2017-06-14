@@ -19,7 +19,7 @@ import numpy as np
 import matplotlib.pyplot as plt
 import pickle
 from sklearn.metrics.pairwise import pairwise_distances
-from types import BooleanType, IntType, StringType, FloatType, NoneType, TupleType
+
 from .utils import rotate_tag90, add_border
 
 
