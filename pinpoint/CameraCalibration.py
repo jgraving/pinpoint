@@ -116,7 +116,7 @@ class CameraCalibration:
 				total_error += error 
 			mean_error = total_error/len(objpoints)
 
-			print "Calibration successful! Mean error: ", mean_error
+			print("Calibration successful! Mean error: ", mean_error)
 
 			self.params = params
 			self.mean_error = mean_error
@@ -127,7 +127,7 @@ class CameraCalibration:
 			self.tvecs = tvecs
 
 		else:
-			print "No calibration points found!"
+			print("No calibration points found!")
 			self.params = None
 
 		return self
