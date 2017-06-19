@@ -17,7 +17,9 @@ limitations under the License.
 """
 import numpy as np
 import matplotlib.pyplot as plt
+
 import pickle
+
 from sklearn.metrics.pairwise import pairwise_distances
 
 from .utils import rotate_tag90, add_border
@@ -201,10 +203,7 @@ class TagDictionary:
 
 		output = open(filename, 'wb')
 
-		try:
-			pickle.dump(config, output)
-		except:
-			raise IOError("File must be '.pkl' extension")
+		pickle.dump(config, output, protocol=0)
 
 		output.close()
 
@@ -230,11 +229,8 @@ class TagDictionary:
 		# Open and load file
 		pkl_file = open(filename, 'rb')
 
-		try:
-			config = pickle.load(pkl_file)
-		except:
-			raise IOError("File must be '.pkl' extension")
-
+		config = pickle.load(pkl_file)
+	
 		pkl_file.close()
 
 		# Load new configuration

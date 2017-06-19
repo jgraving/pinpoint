@@ -918,10 +918,23 @@ def process_frame(frame, channel, resize, block_size, offset, barcode_shape, whi
 
 	Returns
 	-------
-	points_array : ndarray, shape (n_samples, 4, 2)
-		Array of coordinates for barcodes
-	pixels_array : ndarray, shape (n_samples, n_pixels)
-		Array of flattened pixels for barcodes
+	fetch_dict : dict
+
+		A dictionary containing the following objects:
+
+		"gray" : ndarray, shape (MxNx1)
+			The grayscale image
+		"thresh" : ndarray, shape (MxNx1)
+			The threshold image
+		"points_array" : ndarray, shape (n_samples, 4, 2)
+			Array of coordinates for barcodes
+		"pixels_array" : ndarray, shape (n_samples, n_pixels)
+			Array of flattened pixels for barcodes
+		"best_id_list" : ndarray, shape (n_samples)
+			Array of identities that best match each barcode
+		"distances" : ndarray, shape (n_samples)
+			Array of Hamming distances between each barcode 
+			and the closest match
 	"""
 	best_id_list = np.zeros((0,1))
 	distances = np.zeros((0,1))
@@ -964,5 +977,12 @@ def process_frame(frame, channel, resize, block_size, offset, barcode_shape, whi
 																						   )
 	if points_array.shape[0] > 0:                                                           
 		points_array = sort_corners(points_array, best_id_index)
-		
-	return (gray, thresh, points_array, pixels_array, best_id_list, distances)
+	
+	fetch_dict = {"gray":gray,
+				"thresh":thresh,
+				"points_array":points_array,
+				"pixels_array":pixels_array,
+				"best_id_list":best_id_list,
+				"distances":distances}
+
+	return fetch_dict

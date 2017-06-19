@@ -24,6 +24,8 @@ import matplotlib.pyplot as plt
 import datetime as dt
 import os.path
 
+import multiprocessing
+
 from .TagDictionary import TagDictionary
 from .CameraCalibration import CameraCalibration
 
@@ -35,9 +37,35 @@ from .utils import process_frame, get_tag_template
 
 import warnings
 
-cv2.setNumThreads(-1)
 
 __all__ = ['Tracker']
+
+
+class Parallel:
+	def __init__(self, n_jobs):
+		
+		if n_jobs < 0:
+			n_jobs = multiprocessing.cpu_count()+n_jobs+1
+		elif n_jobs > multiprocessing.cpu_count():
+			n_jobs = multiprocessing.cpu_count()
+			
+		self.n_jobs = n_jobs
+		self.pool = multiprocessing.Pool(n_jobs)
+	
+	def process(self, job, arg, asarray=False):    
+			
+		processed = self.pool.map(job, arg)
+		
+		if asarray:
+			processed = np.array(processed)
+			
+		return processed
+
+	def close(self):
+
+		self.pool.close()
+		self.pool.terminate()
+		self.pool.join()
 
 class VideoReader:
 	
@@ -99,6 +127,89 @@ class VideoReader:
 	def finished(self):
 		return self._finished
 
+def _process_frames_parallel(feed_dict):
+
+	# enable multithreading in OpenCV for child thread
+    cv2.setNumThreads(-1)
+
+	frame = feed_dict["frame"]
+	channel = feed_dict["channel"]
+	resize = feed_dict["resize"]
+	block_size = feed_dict["block_size"]
+	offset = feed_dict["offset"]
+	barcode_shape = feed_dict["barcode_shape"]
+	white_width = feed_dict["white_width"]
+	area_min = feed_dict["area_min"]
+	area_max = feed_dict["area_max"]
+	x_proximity = feed_dict["x_proximity"]
+	y_proximity = feed_dict["y_proximity"]
+	tolerance = feed_dict["tolerance"]
+	max_side = feed_dict["max_side"]
+	template = feed_dict["template"]
+	var_thresh = feed_dict["var_thresh"]
+	barcode_nn = feed_dict["barcode_nn"]
+	id_list = feed_dict["id_list"]
+	id_index = feed_dict["id_index"]
+	distance_threshold = feed_dict["distance_threshold"]
+
+	fetch_dict = process_frame(frame=frame,
+								channel=channel,
+								resize=resize,
+								block_size=block_size,
+								offset=offset,
+								barcode_shape=barcode_shape,
+								white_width=white_width,
+								area_min=area_min,
+								area_max=area_max,
+								x_proximity=x_proximity,
+								y_proximity=y_proximity,
+								tolerance=tolerance,
+								max_side=max_side,
+								template=template,
+								var_thresh=var_thresh,
+								barcode_nn=barcode_nn,
+								id_list=id_list,
+								id_index=id_index,
+								distance_threshold=distance_threshold
+								)
+
+
+	return fetch_dict
+
+def process_frames_parallel(frames, channel, resize,
+							block_size, offset, barcode_shape,
+							white_width, area_min, area_max,
+							x_proximity, y_proximity, tolerance,
+							template, max_side, var_thresh,
+							barcode_nn, id_list, id_index,
+							distance_threshold, n_jobs):
+	
+	feed_dicts = [{"frame":frame,
+					"channel":channel,
+					"resize":resize,
+					"block_size":block_size,
+					"offset":offset,
+					"barcode_shape":barcode_shape,
+					"white_width":white_width,
+					"area_min":area_min,
+					"area_max":area_max,
+					"x_proximity":x_proximity,
+					"y_proximity":y_proximity,
+					"tolerance":tolerance,
+					"max_side":max_side,
+					"template":template,
+					"var_thresh":var_thresh,
+					"barcode_nn":barcode_nn,
+					"id_list":id_list,
+					"id_index":id_index,
+					"distance_threshold":distance_threshold} for frame in frames]
+
+	pool = Parallel(n_jobs)
+	fetch_dicts = pool.process(_process_frames_parallel, feed_dicts, asarray=False)
+	pool.close()
+
+	return fetch_dicts
+
 class Tracker(TagDictionary, VideoReader, CameraCalibration):
 	"""
 	
@@ -142,7 +253,8 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 	
 	"""
 
-	def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000), tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green', resize=1.0):
+	def __init__(self, source, block_size=1001, offset=80, area_range=(10,10000),
+				 tolerance=0.1, distance_threshold=8, var_thresh=500, channel='green', resize=1.0):
 		
 		VideoReader.__init__(self, source)
 		TagDictionary.__init__(self)
@@ -162,7 +274,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		self.y_proximity = (self.frame_height*self.resize)-1
 
 		
-	def track(self, filename='output.h5', batch_size=8):
+	def track(self, filename='output.h5', batch_size=8, n_jobs=1):
 		
 		"""
 		Process frames to track barcodes. Saves data to hdf5 file. See `Notes` for details.
@@ -173,7 +285,12 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 			The file to save data to. 
 		batch_size : int, default is 8
 			The number of frames to process in each batch.
-			
+		n_jobs : int (default = 1)
+			Number of jobs to use for processing images on the CPU.
+			If -1, all CPUs are used. If 1 is given, no parallel computing is
+			used. For n_jobs below -1, (n_cpus + 1 + n_jobs) are used. 
+			Thus for n_jobs = -2, all CPUs but one are used.
+
 		Notes
 		-----
 		The tracker outputs data as an hdf5 file with the following structure:
@@ -196,21 +313,30 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 			
 		Returns
 		-------
-		gray : ndarray, (height, width, 1)
-			Single-channel grayscale image from the most recent frame
-		thresh : ndarray, (height, width, 1)
-			Single-channel threshold image from the most recent frame
-		points_array : ndarray, shape (n_samples, 4, 2)
-			Array of coordinates for barcodes from the most recent frame
-		pixels_array : ndarray, shape (n_samples, n_pixels)
-			Array of flattened pixels for barcodes from the most recent frame
-		best_id_list : ndarray, dtype=int, shape (n_samples, 1)
-			The nearest identity for each sample
-		distances : ndarray, dtype=int, shape (n_samples, 1)
-			The Hamming distance for each sample to the 
-			nearest neighbor from the barcode dictionary
+		fetch_dict : dict
+
+		A dictionary containing the following objects:
+
+		"gray" : ndarray, shape (MxNx1)
+			The grayscale image
+		"thresh" : ndarray, shape (MxNx1)
+			The threshold image
+		"points_array" : ndarray, shape (n_samples, 4, 2)
+			Array of coordinates for barcodes
+		"pixels_array" : ndarray, shape (n_samples, n_pixels)
+			Array of flattened pixels for barcodes
+		"best_id_list" : ndarray, shape (n_samples)
+			Array of identities that best match each barcode
+		"distances" : ndarray, shape (n_samples)
+			Array of Hamming distances between each barcode 
+			and the closest match
+
 		"""
-		
+		if n_jobs == 0:
+			n_jobs = 1
+
+		self.n_jobs = n_jobs
+
 		self.h5file = h5py.File(filename, 'w')
 		dgroup = self.h5file.create_group('data')
 		
@@ -233,27 +359,67 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 			while not self.finished():
 			#for idx in range(1):
 				frames = self.read_batch(batch_size)
-				for frame in frames:
-					gray, thresh, points_array, pixels_array, best_id_list, distances = process_frame(frame=frame,
-																							   channel=self.channel,
-																							   resize=self.resize,
-																							   block_size=self.block_size,
-																							   offset = self.offset,
-																							   barcode_shape=self.barcode_shape,
-																							   white_width=self.white_width,
-																							   area_min=self.area_min,
-																							   area_max=self.area_max,
-																							   x_proximity=self.x_proximity,
-																							   y_proximity=self.y_proximity,
-																							   tolerance=self.tolerance,
-																							   max_side=max_side,
-																							   template=template,
-																							   var_thresh=self.var_thresh,
-																							   barcode_nn=self.barcode_nn,
-																							   id_list=self.id_list,
-																							   id_index=self.id_index,
-																							   distance_threshold=self.distance_threshold,
-																							  )
+				
+				if self.n_jobs == 1:
+					fetch_dicts = [process_frame(frame=frame,
+											channel=self.channel,
+											resize=self.resize,
+											block_size=self.block_size,
+											offset = self.offset,
+											barcode_shape=self.barcode_shape,
+											white_width=self.white_width,
+											area_min=self.area_min,
+											area_max=self.area_max,
+											x_proximity=self.x_proximity,
+											y_proximity=self.y_proximity,
+											tolerance=self.tolerance,
+											max_side=max_side,
+											template=template,
+											var_thresh=self.var_thresh,
+											barcode_nn=self.barcode_nn,
+											id_list=self.id_list,
+											id_index=self.id_index,
+											distance_threshold=self.distance_threshold
+											) for frame in frames]
+
+
+				else:
+
+					# disable multithreading in OpenCV for main thread 
+					# to avoid problems after parallelization
+					cv2.setNumThreads(0)
+
+					fetch_dicts = process_frames_parallel(frames=frames,
+														channel=self.channel,
+														resize=self.resize,
+														block_size=self.block_size,
+														offset = self.offset,
+														barcode_shape=self.barcode_shape,
+														white_width=self.white_width,
+														area_min=self.area_min,
+														area_max=self.area_max,
+														x_proximity=self.x_proximity,
+														y_proximity=self.y_proximity,
+														tolerance=self.tolerance,
+														max_side=max_side,
+														template=template,
+														var_thresh=self.var_thresh,
+														barcode_nn=self.barcode_nn,
+														id_list=self.id_list,
+														id_index=self.id_index,
+														distance_threshold=self.distance_threshold,
+														n_jobs = self.n_jobs
+														)
+
+				for fetch_dict in fetch_dicts:
+
+					gray = fetch_dict["gray"]
+					thresh = fetch_dict["thresh"]
+					points_array = fetch_dict["points_array"]
+					pixels_array = fetch_dict["pixels_array"]
+					best_id_list = fetch_dict["best_id_list"]
+					distances = fetch_dict["distances"]
+
 					points_array = points_array / self.resize
 					frame_idx = np.repeat(idx, points_array.shape[0])
 					idx += 1
@@ -273,8 +439,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 			self.h5file.close()
 			
 		except KeyboardInterrupt:
+			
 			self.h5file.close()
 		
 
 
-		return (gray, thresh, points_array, pixels_array, best_id_list, distances)
+		return fetch_dict

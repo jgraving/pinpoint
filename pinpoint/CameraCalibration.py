@@ -19,7 +19,6 @@ import cv2
 import pickle
 import glob
 
-
 class CameraCalibration:
 
 	def __init__(self, grid_shape=(9,6)):
@@ -185,10 +184,7 @@ class CameraCalibration:
 
 		output = open(filename, 'wb')
 
-		try:
-			pickle.dump(self.params, output)
-		except:
-			raise IOError("filename must be '.pkl' extension")
+		pickle.dump(self.params, output, protocol=0)
 
 		output.close()
 
@@ -215,10 +211,7 @@ class CameraCalibration:
 		
 		pkl_file = open(filename, 'rb')
 
-		try:
-			self.params = pickle.load(pkl_file)
-		except:
-			raise IOError("File must be '.pkl' extension")
+		self.params = pickle.load(pkl_file)
 
 		pkl_file.close()
 
