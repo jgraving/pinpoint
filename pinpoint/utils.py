@@ -210,8 +210,8 @@ def get_grayscale(color_image, channel = None):
 		raise ValueError("image must be color (MxNx3)")
 	if color_image.shape[2] != 3:
 		raise ValueError("image must have 3 color channels (MxNx3)")
-	if color_image.dtype is not np.dtype(np.uint8):
-		raise TypeError("image array must be dtype np.uint8")
+	#if color_image.dtype is not np.dtype(np.uint8):
+#		raise TypeError("image array must be dtype np.uint8")
 
 	if channel.startswith('b'):
 		gray_image, _, _ = cv2.split(color_image)
@@ -254,8 +254,8 @@ def get_threshold(gray_image, block_size = 101, offset = 0):
 		raise TypeError("image must be a numpy array")
 	if gray_image.ndim != 2:
 		raise ValueError("image must be grayscale")
-	if gray_image.dtype is not np.dtype(np.uint8):
-		raise TypeError("image array must be dtype np.uint8")
+	#if gray_image.dtype is not np.dtype(np.uint8):
+	#	raise TypeError("image array must be dtype np.uint8")
 
 	threshold_image = cv2.adaptiveThreshold(gray_image, 255, cv2.ADAPTIVE_THRESH_MEAN_C, cv2.THRESH_BINARY, block_size, offset)
 
