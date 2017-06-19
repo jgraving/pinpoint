@@ -384,7 +384,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		idx = 0
 
 		if self.n_jobs != 1:
-			self.pool = Parallel(n_jobs)
+			self.pool = Parallel(self.n_jobs)
 
 		try:
 			while not self.finished():
@@ -439,7 +439,6 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 														id_list=self.id_list,
 														id_index=self.id_index,
 														distance_threshold=self.distance_threshold,
-														n_jobs = self.n_jobs,
 														pool=self.pool
 														)
 
@@ -467,6 +466,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 						dset.resize(tuple(new_shape))
 						dset[current_size:new_size] = data
+						
 			self.pool.close()
 			self.h5file.close()
 			
