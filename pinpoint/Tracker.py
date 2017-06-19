@@ -152,6 +152,8 @@ def _process_frames_parallel(feed_dict):
 	id_index = feed_dict["id_index"]
 	distance_threshold = feed_dict["distance_threshold"]
 
+	print(frame.dtype)
+	
 	fetch_dict = process_frame(frame=frame,
 								channel=channel,
 								resize=resize,
@@ -204,6 +206,7 @@ def process_frames_parallel(frames, channel, resize,
 					"id_index":id_index,
 					"distance_threshold":distance_threshold} for frame in frames]
 
+
 	pool = Parallel(n_jobs)
 	fetch_dicts = pool.process(_process_frames_parallel, feed_dicts, asarray=False)
 	pool.close()
@@ -218,32 +221,59 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 	Parameters
 	----------
 	block_size : int, default = 1001
-		Odd value integer. Size of the local neighborhood for adaptive thresholding.
+		Odd value integer.
+		Size of the local neighborhood
+		for adaptive thresholding.
+
 	offset : default = 2
-		Constant subtracted from the mean for adaptive thresholding. Normally, it is positive but 
-		may be zero or negative as well. The threshold value is calculated as the mean of the 
-		block_size x block_size neighborhood *minus* the offset.
+		Constant subtracted from 
+		the mean for adaptive thresholding.
+		Normally, it is positive but 
+		may be zero or negative as well.
+		The threshold value is calculated 
+		as the mean of the block_size x block_size
+		neighborhood *minus* the offset.
+
 	area_range : tuple, default (10,10000)
-		Area range in pixels for potential barcodes. If the minimum value is too low this
+		Area range in pixels for potential barcodes. 
+		If the minimum value is too low this
 		can lead to false positives.
+
 	tolerance : int or float, default = 0.1
-		This parameter affects how many many contours reach the barcode matching algorithm, 
-		as only polygons with 4 vertices are used. This is the toleracne for fitting a polygon as a 
-		proportion of the perimeter of the contour. This value is used to set epsilon, which is the 
-		maximum distance between the original contour and its polygon approximation. 
-		Higher values decrease the number of vertices in the polygon.
-		Lower values increase the number of vertices in the polygon. 
+		This parameter affects how many many contours
+		reach the barcode matching algorithm, 
+		as only polygons with 4 vertices are used.
+		This is the tolerance for fitting a polygon as a 
+		proportion of the perimeter of the contour.
+		This value is used to set epsilon, which is the 
+		maximum distance between the original contour
+		and its polygon approximation. Higher values
+		decrease the number of vertices in the polygon.
+		Lower values increase the number of vertices in 
+		the polygon. 
+
 	distance_threshold : int, default = 8
-		The maximum Hamming distance between a barcode candidate and its matched identity.
-		Set this to some high value to save all candidates.
+		The maximum Hamming distance between a
+		barcode candidate and its matched identity.
+		Set this to some high value
+		to save all candidates.
+
 	var_thresh : float, (default = 500)
-		Minimum variance threshold. Candidate barcodes with low variance are likely white or black blobs.
+		Minimum variance threshold. 
+		Candidate barcodes with low variance
+		are likely white or black blobs.
+
 	channel : {'blue', 'green', 'red', 'none', None}, default = None
-		The color channel to use for producing the grayscale image.
+		The color channel to use for
+		producing the grayscale image.
+
 	resize : float, default=1.0
-		The scalar for resizing images. In most cases, increasing the size of the image 
-		can improve edge detection which leads to better barcode reconstruction 
-		at the expense of computation time. The recommended setting is
+		A scalar value for resizing images. 
+		In most cases, increasing the size of the image 
+		can improve edge detection which leads
+		to better barcode reconstruction 
+		at the expense of computation time.
+		The recommended setting is
 		some value between 1.0 and 2.0
 	
 	Returns
