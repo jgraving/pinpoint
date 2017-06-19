@@ -130,7 +130,7 @@ class VideoReader:
 def _process_frames_parallel(feed_dict):
 
 	# enable multithreading in OpenCV for child thread
-	cv2.setNumThreads(-1)
+	#cv2.setNumThreads(-1)
 
 	frame = feed_dict["frame"]
 	channel = feed_dict["channel"]
@@ -380,7 +380,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		
 		self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='ball_tree')
 		self.barcode_nn.fit(self.barcode_list)
-		#dists = []
+
 		idx = 0
 
 		if self.n_jobs != 1:
@@ -466,8 +466,8 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 						dset.resize(tuple(new_shape))
 						dset[current_size:new_size] = data
-						
-			self.pool.close()
+			if self.n_jobs != 1:
+				self.pool.close()
 			self.h5file.close()
 			
 		except KeyboardInterrupt:
