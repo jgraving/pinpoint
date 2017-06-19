@@ -37,6 +37,8 @@ from .utils import process_frame, get_tag_template
 
 import warnings
 
+import gc
+
 
 __all__ = ['Tracker']
 
@@ -173,6 +175,8 @@ def _process_frames_parallel(feed_dict):
 								distance_threshold=distance_threshold
 								)
 
+	fetch_dict = {"points_array":fetch_dict["points_array"], "best_id_list":fetch_dict["best_id_list"], "distances":fetch_dict["distances"]}
+
 
 	return fetch_dict
 
@@ -182,7 +186,7 @@ def process_frames_parallel(frames, channel, resize,
 							x_proximity, y_proximity, tolerance,
 							template, max_side, var_thresh,
 							barcode_nn, id_list, id_index,
-							distance_threshold, n_jobs):
+							distance_threshold, pool):
 	
 	feed_dicts = [{"frame":frame,
 					"channel":channel,
@@ -204,10 +208,11 @@ def process_frames_parallel(frames, channel, resize,
 					"id_index":id_index,
 					"distance_threshold":distance_threshold} for frame in frames]
 
-	pool = Parallel(n_jobs)
+	del frames
+	gc.collect()
+
 	fetch_dicts = pool.process(_process_frames_parallel, feed_dicts, asarray=False)
-	pool.close()
-	
+
 	return fetch_dicts
 
 
@@ -385,6 +390,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 		idx = 0
 
+		if self.n_jobs != 1:
+			self.pool = Parallel(self.n_jobs)
+
 		try:
 			while not self.finished():
 			#for idx in range(1):
@@ -438,15 +446,12 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 														id_list=self.id_list,
 														id_index=self.id_index,
 														distance_threshold=self.distance_threshold,
-														n_jobs=self.n_jobs
+														pool=self.pool
 														)
 
 				for fetch_dict in fetch_dicts:
 
-					gray = fetch_dict["gray"]
-					thresh = fetch_dict["thresh"]
 					points_array = fetch_dict["points_array"]
-					pixels_array = fetch_dict["pixels_array"]
 					best_id_list = fetch_dict["best_id_list"]
 					distances = fetch_dict["distances"]
 
@@ -465,11 +470,15 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 						dset.resize(tuple(new_shape))
 						dset[current_size:new_size] = data
-
+			
+			if self.n_jobs != 1:
+				self.pool.close()
+				
 			self.h5file.close()
 			
 		except KeyboardInterrupt:
-			self.pool.close()
+			if self.n_jobs != 1:
+				self.pool.close()
 			self.h5file.close()
 		
 
