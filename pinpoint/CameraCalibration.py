@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-    http://www.apache.org/licenses/LICENSE-2.0
+	http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -84,8 +84,8 @@ class CameraCalibration:
 				# Find the chess board corners
 				ret, corners = cv2.findChessboardCorners(gray, self.grid_shape, None, flags = (cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FILTER_QUADS + cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_NORMALIZE_IMAGE))
 				#ret, corners = cv2.findCirclesGrid(gray, grid_shape, None, flags = (cv2.CALIB_CB_ASYMMETRIC_GRID))
-	            
-	            # If found, add object points, image points (after refining them)
+				
+				# If found, add object points, image points (after refining them)
 				if ret == True:
 					objpoints.append(objp)
 					corners2 = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
@@ -98,7 +98,7 @@ class CameraCalibration:
 				if imshow == True:
 					cv2.imshow('img',img)
 					cv2.waitKey(delay)
-	                
+					
 		if imshow == True:
 			cv2.destroyAllWindows()
 			for i in range(5):
@@ -107,7 +107,7 @@ class CameraCalibration:
 		if len(objpoints) > 0 and len(imgpoints) > 0:
 			ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
 			params = {"ret" : ret, "mtx" : mtx, "dist" : dist, "rvecs" : rvecs, "tvecs" : tvecs}
-	        
+			
 			total_error = 0
 			for i in xrange(len(objpoints)):
 				imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)

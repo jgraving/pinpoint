@@ -662,7 +662,7 @@ def match_barcodes(points_array, pixels_array, barcode_nn, id_list, id_index, di
 	distances : ndarray
 		Array of distances for matched barcodes
 	"""
-    
+	
 	distances, index = barcode_nn.kneighbors(pixels_array//255, n_neighbors=1)
 	distances = distances[:,0]
 	index = index[:,0]
@@ -699,7 +699,7 @@ def sort_corners(points_array, best_id_index):
 	"""
 
 	for idx in range(points_array.shape[0]):
-        
+		
 		points = points_array[idx]
 		best_index = best_id_index[idx]
 		rotation_test = best_index % 4

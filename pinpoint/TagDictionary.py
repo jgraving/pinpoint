@@ -101,7 +101,7 @@ class TagDictionary:
 		metric : str, default = 'cityblock'
 			The distance metric to use for generating the barcodes.
 		"""
-    
+	
 	def __init__(self, tag_shape = (5,5), distance = 7, white_width = 1, black_width = 1, metric='cityblock'):
 
 		self.tag_shape = tag_shape
@@ -174,9 +174,9 @@ class TagDictionary:
 	
 		if verbose:
 			print("Done!")
-            
+			
 		self.barcode_list = add_white_border(self.master_list, self.tag_shape, self.white_width)
-        
+		
 		return self
 		
 	def save_dict(self, filename = "master_list.pkl"):

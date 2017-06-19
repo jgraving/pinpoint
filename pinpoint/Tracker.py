@@ -130,7 +130,7 @@ class VideoReader:
 def _process_frames_parallel(feed_dict):
 
 	# enable multithreading in OpenCV for child thread
-    cv2.setNumThreads(-1)
+	cv2.setNumThreads(-1)
 
 	frame = feed_dict["frame"]
 	channel = feed_dict["channel"]
@@ -315,7 +315,8 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		-------
 		fetch_dict : dict
 
-		A dictionary containing the following objects:
+		A dictionary containing the following objects
+		processed from the latest frame:
 
 		"gray" : ndarray, shape (MxNx1)
 			The grayscale image
@@ -439,7 +440,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 			self.h5file.close()
 			
 		except KeyboardInterrupt:
-			
+
 			self.h5file.close()
 		
 
