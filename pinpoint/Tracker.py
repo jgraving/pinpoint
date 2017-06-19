@@ -130,7 +130,7 @@ class VideoReader:
 def _process_frames_parallel(feed_dict):
 
 	# enable multithreading in OpenCV for child thread
-	#cv2.setNumThreads(-1)
+	cv2.setNumThreads(0)
 
 	frame = feed_dict["frame"]
 	channel = feed_dict["channel"]
@@ -182,7 +182,7 @@ def process_frames_parallel(frames, channel, resize,
 							x_proximity, y_proximity, tolerance,
 							template, max_side, var_thresh,
 							barcode_nn, id_list, id_index,
-							distance_threshold, pool):
+							distance_threshold, n_jobs):
 	
 	feed_dicts = [{"frame":frame,
 					"channel":channel,
@@ -204,10 +204,12 @@ def process_frames_parallel(frames, channel, resize,
 					"id_index":id_index,
 					"distance_threshold":distance_threshold} for frame in frames]
 
-
+	pool = Parallel(n_jobs)
 	fetch_dicts = pool.process(_process_frames_parallel, feed_dicts, asarray=False)
-
+	pool.close()
+	
 	return fetch_dicts
+
 
 class Tracker(TagDictionary, VideoReader, CameraCalibration):
 	"""
@@ -383,9 +385,6 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 		idx = 0
 
-		if self.n_jobs != 1:
-			self.pool = Parallel(self.n_jobs)
-
 		try:
 			while not self.finished():
 			#for idx in range(1):
@@ -439,7 +438,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 														id_list=self.id_list,
 														id_index=self.id_index,
 														distance_threshold=self.distance_threshold,
-														pool=self.pool
+														n_jobs=self.n_jobs
 														)
 
 				for fetch_dict in fetch_dicts:
@@ -466,8 +465,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 						dset.resize(tuple(new_shape))
 						dset[current_size:new_size] = data
-			if self.n_jobs != 1:
-				self.pool.close()
+
 			self.h5file.close()
 			
 		except KeyboardInterrupt:
