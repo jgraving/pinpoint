@@ -17,7 +17,7 @@ limitations under the License.
 from . import utils
 from .CameraCalibration import CameraCalibration
 from .TagDictionary import TagDictionary
-from .Tracker import Tracker
+from .Tracker import Tracker, VideoReader
 
 set()
 
