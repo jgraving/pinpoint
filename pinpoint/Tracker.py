@@ -151,8 +151,6 @@ def _process_frames_parallel(feed_dict):
 	id_list = feed_dict["id_list"]
 	id_index = feed_dict["id_index"]
 	distance_threshold = feed_dict["distance_threshold"]
-
-	print(frame.dtype)
 	
 	fetch_dict = process_frame(frame=frame,
 								channel=channel,
