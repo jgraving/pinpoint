@@ -133,7 +133,7 @@ class VideoReader:
 def _process_frames_parallel(feed_dict):
 
 	# enable multithreading in OpenCV for child thread
-	cv2.setNumThreads(0)
+	#cv2.setNumThreads(0)
 
 	frame = feed_dict["frame"]
 	channel = feed_dict["channel"]
@@ -176,7 +176,10 @@ def _process_frames_parallel(feed_dict):
 								distance_threshold=distance_threshold
 								)
 
-	fetch_dict = {"points_array":fetch_dict["points_array"], "best_id_list":fetch_dict["best_id_list"], "distances":fetch_dict["distances"]}
+	fetch_dict = {	"points_array":fetch_dict["points_array"],
+					"best_id_list":fetch_dict["best_id_list"],
+					"distances":fetch_dict["distances"]
+				}
 
 
 	return fetch_dict
@@ -311,12 +314,12 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 	def track(self, filename='output.h5', batch_size=8, n_jobs=1):
 		
 		"""
-		Process frames to track barcodes. Saves data to hdf5 file. See `Notes` for details.
+		Process frames to track barcodes. Saves data to HDF5 file. See `Notes` for details.
 
 		Parameters
 		----------
 		filename : str, default = 'output.h5'
-			The file to save data to. 
+			The output file for saving data. 
 		batch_size : int, default is 8
 			The number of frames to process in each batch.
 		n_jobs : int (default = 1)
@@ -327,7 +330,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 		Notes
 		-----
-		The tracker outputs data as an hdf5 file with the following structure:
+		The tracker outputs data as an HDF5 file with the following structure:
 			--filename
 			----/data
 			------/frame_idx
@@ -353,9 +356,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		processed from the latest frame:
 
 		"gray" : ndarray, shape (MxNx1)
-			The grayscale image
+			The grayscale image. Only returned if n_jobs=1
 		"thresh" : ndarray, shape (MxNx1)
-			The threshold image
+			The threshold image. Only returned if n_jobs=1
 		"points_array" : ndarray, shape (n_samples, 4, 2)
 			Array of coordinates for barcodes
 		"pixels_array" : ndarray, shape (n_samples, n_pixels)
