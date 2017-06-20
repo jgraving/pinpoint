@@ -39,6 +39,9 @@ import warnings
 
 import gc
 
+# disable multithreading in OpenCV for main thread 
+# to avoid problems after parallelization
+cv2.setNumThreads(0)
 
 __all__ = ['Tracker']
 
@@ -131,9 +134,6 @@ class VideoReader:
 		return self._finished
 
 def _process_frames_parallel(feed_dict):
-
-	# enable multithreading in OpenCV for child thread
-	#cv2.setNumThreads(0)
 
 	frame = feed_dict["frame"]
 	channel = feed_dict["channel"]
@@ -434,9 +434,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
 				else:
 
-					# disable multithreading in OpenCV for main thread 
-					# to avoid problems after parallelization
-					cv2.setNumThreads(0)
+					
 
 					fetch_dicts = process_frames_parallel(frames=frames,
 														channel=self.channel,

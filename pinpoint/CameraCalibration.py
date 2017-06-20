@@ -19,6 +19,10 @@ import cv2
 import pickle
 import glob
 
+# disable multithreading in OpenCV for main thread 
+# to avoid problems after parallelization
+cv2.setNumThreads(0)
+
 class CameraCalibration:
 
 	def __init__(self, grid_shape=(9,6)):

@@ -21,6 +21,12 @@ from warnings import warn
 
 from sklearn.metrics.pairwise import pairwise_distances
 
+
+# disable multithreading in OpenCV for main thread 
+# to avoid problems after parallelization
+cv2.setNumThreads(0)
+
+
 def rotate_tag90(tag, tag_shape, n=1):
 	
 	"""
