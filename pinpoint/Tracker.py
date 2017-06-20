@@ -71,14 +71,15 @@ class Parallel:
 
 class VideoReader:
 	
-	def __init__(self, path):
+	def __init__(self, source):
 		
-		self.stream = cv2.VideoCapture(path)
+		self._source = source
+		self.stream = cv2.VideoCapture(self._source)
 		self._total_frames = int(self.stream.get(cv2.CAP_PROP_FRAME_COUNT))
-		self._fps = self.stream.get(cv2.CAP_PROP_FPS)
-		self._codec = self.stream.get(cv2.CAP_PROP_FOURCC)
-		self._height = self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT)
-		self._width = self.stream.get(cv2.CAP_PROP_FRAME_WIDTH)
+		self._fps = int(self.stream.get(cv2.CAP_PROP_FPS))
+		self._codec = int(self.stream.get(cv2.CAP_PROP_FOURCC))
+		self._height = int(self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
+		self._width = int(self.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
 		self._finished = False
 
 	def read(self):
@@ -372,12 +373,19 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		self.n_jobs = n_jobs
 
 		self.h5file = h5py.File(filename, 'w')
-		dgroup = self.h5file.create_group('data')
-		
-		frame_idx_dset = dgroup.create_dataset('frame_idx', shape=(0,), dtype=np.int64, maxshape=(None,))
-		corners_dset = dgroup.create_dataset('corners', shape=(0,4,2), dtype=np.float64, maxshape=(None,4,2))
-		identity_dset = dgroup.create_dataset('identity', shape=(0,), dtype=np.int32, maxshape=(None,))
-		distances_dset = dgroup.create_dataset('distances', shape=(0,), dtype=np.int32, maxshape=(None,))
+
+		self.h5file.attrs.create('fps', self._fps)
+		self.h5file.attrs.create('codec', self._codec)
+		self.h5file.attrs.create('height', self._height)
+		self.h5file.attrs.create('width', self._width)
+		self.h5file.attrs.create('total_frames', self._total_frames)
+		self.h5file.attrs.create('source', self._source)
+
+		data_group = self.h5file.create_group('data')
+		frame_idx_dset = data_group.create_dataset('frame_idx', shape=(0,), dtype=np.int64, maxshape=(None,))
+		corners_dset = data_group.create_dataset('corners', shape=(0,4,2), dtype=np.float64, maxshape=(None,4,2))
+		identity_dset = data_group.create_dataset('identity', shape=(0,), dtype=np.int32, maxshape=(None,))
+		distances_dset = data_group.create_dataset('distances', shape=(0,), dtype=np.int32, maxshape=(None,))
 		
 		dset_list = [frame_idx_dset, corners_dset, identity_dset, distances_dset]
 		
@@ -385,7 +393,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		max_side=100
 		template = get_tag_template(max_side)
 		
-		self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='ball_tree')
+		self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='brute')
 		self.barcode_nn.fit(self.barcode_list)
 
 		idx = 0
@@ -473,7 +481,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 			
 			if self.n_jobs != 1:
 				self.pool.close()
-				
+
 			self.h5file.close()
 			
 		except KeyboardInterrupt:
