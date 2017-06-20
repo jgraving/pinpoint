@@ -396,7 +396,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		max_side=100
 		template = get_tag_template(max_side)
 		
-		self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='brute')
+		self.barcode_nn = NearestNeighbors(metric='cityblock', algorithm='ball_tree')
 		self.barcode_nn.fit(self.barcode_list)
 
 		idx = 0
