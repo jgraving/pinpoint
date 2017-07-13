@@ -382,7 +382,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 		self.h5file.attrs.create('height', self._height)
 		self.h5file.attrs.create('width', self._width)
 		self.h5file.attrs.create('total_frames', self._total_frames)
-		self.h5file.attrs.create('source', self._source)
+		#self.h5file.attrs.create('source', self._source)
 
 		data_group = self.h5file.create_group('data')
 		frame_idx_dset = data_group.create_dataset('frame_idx', shape=(0,), dtype=np.int64, maxshape=(None,))
