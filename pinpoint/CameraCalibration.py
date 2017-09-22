@@ -5,7 +5,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at
 
-	http://www.apache.org/licenses/LICENSE-2.0
+    http://www.apache.org/licenses/LICENSE-2.0
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,211 +19,247 @@ import cv2
 import pickle
 import glob
 
-# disable multithreading in OpenCV for main thread 
+# disable multithreading in OpenCV for main thread
 # to avoid problems after parallelization
 cv2.setNumThreads(0)
 
+
 class CameraCalibration:
 
-	def __init__(self, grid_shape=(9,6)):
+    def __init__(self, grid_shape=(9, 6)):
 
-		""" Class for calculating calibration parameters from calibration images
+        """ Class for calculating calibration parameters from calibration images
 
-			Parameters
-			----------
-			grid_shape : tuple of int
-				Shape of calibration grid (internal corners)
+            Parameters
+            ----------
+            grid_shape : tuple of int
+                Shape of calibration grid (internal corners)
 
-			Returns
-			-------
-			self : class
-				CameraCalibration class instance.
+            Returns
+            -------
+            self : class
+                CameraCalibration class instance.
 
-		"""
+        """
 
-		self.grid_shape = grid_shape
+        self.grid_shape = grid_shape
 
-	def calibrate(self, image_files, imshow = True, delay = 500):
+    def calibrate(self, image_files, imshow=True, delay=500):
 
-		""" Calculates calibration parameters from calibration images
+        """ Calculates calibration parameters from calibration images
 
-			Parameters
-			----------
-			image_files : str
-				File path to images (e.g. "/path/to/files/*.jpg")
-			grid_shape : tuple of int
-				Size of calibration grid (internal corners)
-			imshow : bool, (default = True)
-				Show the calibration images
-			delay : int, >=1 (default = 500)
-				Delay in msecs between each image for imshow
-				
-			Returns
-			-------
-			params : dict
-				Parameters for undistorting images.
+            Parameters
+            ----------
+            image_files : str
+                File path to images (e.g. "/path/to/files/*.jpg")
+            grid_shape : tuple of int
+                Size of calibration grid (internal corners)
+            imshow : bool, (default = True)
+                Show the calibration images
+            delay : int, >=1 (default = 500)
+                Delay in msecs between each image for imshow
 
-		"""
+            Returns
+            -------
+            params : dict
+                Parameters for undistorting images.
 
-		image_files = sorted(glob.glob(image_files))
+        """
 
-		# termination criteria
-		criteria = (cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER, 300, 0.001)
+        image_files = sorted(glob.glob(image_files))
 
-		# prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
-		objp = np.zeros((self.grid_shape[1]*self.grid_shape[0],3), np.float32)
-		objp[:,:2] = np.mgrid[0:self.grid_shape[0],0:self.grid_shape[1]].T.reshape(-1,2)
+        # termination criteria
+        criteria = (
+            cv2.TERM_CRITERIA_EPS + cv2.TERM_CRITERIA_MAX_ITER,
+            300,
+            0.001
+        )
 
-		# Arrays to store object points and image points from all the images.
-		objpoints = [] # 3d point in real world space
-		imgpoints = [] # 2d points in image plane.
+        # prepare object points, like (0,0,0), (1,0,0), (2,0,0) ....,(6,5,0)
+        objp = np.zeros((self.grid_shape[1] * self.grid_shape[0], 3),
+                        np.float32)
+        objp[:, :2] = np.mgrid[0:self.grid_shape[0],
+                               0:self.grid_shape[1]].T.reshape(-1, 2)
 
-		for filename in image_files:
-			img = cv2.imread(filename)
+        # Arrays to store object points and image points from all the images.
+        objpoints = []  # 3d point in real world space
+        imgpoints = []  # 2d points in image plane.
 
-			if type(img) != type(None):
+        for filename in image_files:
+            img = cv2.imread(filename)
 
-				gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
+            if isinstance(img, None):
 
-				# Find the chess board corners
-				ret, corners = cv2.findChessboardCorners(gray, self.grid_shape, None, flags = (cv2.CALIB_CB_ADAPTIVE_THRESH + cv2.CALIB_CB_FILTER_QUADS + cv2.CALIB_CB_FAST_CHECK + cv2.CALIB_CB_NORMALIZE_IMAGE))
-				#ret, corners = cv2.findCirclesGrid(gray, grid_shape, None, flags = (cv2.CALIB_CB_ASYMMETRIC_GRID))
-				
-				# If found, add object points, image points (after refining them)
-				if ret == True:
-					objpoints.append(objp)
-					corners2 = cv2.cornerSubPix(gray, corners, (11,11), (-1,-1), criteria)
-					imgpoints.append(corners2)
+                gray = cv2.cvtColor(img, cv2.COLOR_BGR2GRAY)
 
-					if imshow == True:
-						img = cv2.drawChessboardCorners(img, self.grid_shape, corners2, ret)
+                # Find the chess board corners
+                ret, corners = cv2.findChessboardCorners(
+                    gray,
+                    self.grid_shape,
+                    None,
+                    flags=(cv2.CALIB_CB_ADAPTIVE_THRESH +
+                           cv2.CALIB_CB_FILTER_QUADS +
+                           cv2.CALIB_CB_FAST_CHECK +
+                           cv2.CALIB_CB_NORMALIZE_IMAGE))
 
-				# Draw and display the corners
-				if imshow == True:
-					cv2.imshow('img',img)
-					cv2.waitKey(delay)
-					
-		if imshow == True:
-			cv2.destroyAllWindows()
-			for i in range(5):
-				cv2.waitKey(1) 
+                # If found, add object points,
+                # image points (after refining them)
+                if ret:
+                    objpoints.append(objp)
+                    corners2 = cv2.cornerSubPix(gray,
+                                                corners,
+                                                (11, 11),
+                                                (-1, -1),
+                                                criteria
+                                                )
+                    imgpoints.append(corners2)
 
-		if len(objpoints) > 0 and len(imgpoints) > 0:
-			ret, mtx, dist, rvecs, tvecs = cv2.calibrateCamera(objpoints, imgpoints, gray.shape[::-1], None, None)
-			params = {"ret" : ret, "mtx" : mtx, "dist" : dist, "rvecs" : rvecs, "tvecs" : tvecs}
-			
-			total_error = 0
-			for i in xrange(len(objpoints)):
-				imgpoints2, _ = cv2.projectPoints(objpoints[i], rvecs[i], tvecs[i], mtx, dist)
-				error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)/len(imgpoints2)
-				total_error += error 
-			mean_error = total_error/len(objpoints)
+                    if imshow:
+                        img = cv2.drawChessboardCorners(img,
+                                                        self.grid_shape,
+                                                        corners2,
+                                                        ret
+                                                        )
 
-			print("Calibration successful! Mean error: ", mean_error)
+                # Draw and display the corners
+                if imshow:
+                    cv2.imshow('img', img)
+                    cv2.waitKey(delay)
 
-			self.params = params
-			self.mean_error = mean_error
-			self.ret = ret
-			self.mtx = mtx
-			self.dist = dist
-			self.rvecs = rvecs
-			self.tvecs = tvecs
+        if imshow:
+            cv2.destroyAllWindows()
+            for i in range(5):
+                cv2.waitKey(1)
 
-		else:
-			print("No calibration points found!")
-			self.params = None
+        if len(objpoints) > 0 and len(imgpoints) > 0:
+            calibration = cv2.calibrateCamera(objpoints,
+                                              imgpoints,
+                                              gray.shape[::-1],
+                                              None, None)
+            ret, mtx, dist, rvecs, tvecs = calibration
+            params = {"ret": ret,
+                      "mtx": mtx,
+                      "dist": dist,
+                      "rvecs": rvecs,
+                      "tvecs": tvecs}
 
-		return self
+            total_error = 0
+            for i in xrange(len(objpoints)):
+                imgpoints2, _ = cv2.projectPoints(objpoints[i],
+                                                  rvecs[i],
+                                                  tvecs[i],
+                                                  mtx,
+                                                  dist)
+                error = cv2.norm(imgpoints[i], imgpoints2, cv2.NORM_L2)
+                error /= len(imgpoints2)
+                total_error += error
+            mean_error = total_error / len(objpoints)
 
+            print("Calibration successful! Mean error: ", mean_error)
 
-	def undistort(self, image, crop = True):
+            self.params = params
+            self.mean_error = mean_error
+            self.ret = ret
+            self.mtx = mtx
+            self.dist = dist
+            self.rvecs = rvecs
+            self.tvecs = tvecs
 
-		""" Returns undistorted image using calibration parameters.
+        else:
+            print("No calibration points found!")
+            self.params = None
 
-			Parameters
-			----------
-			image : numpy_array 
-				Image to be undistorted
-			params : dict
-				Calibration parameters
-			crop : bool
-				Crop the image to the optimal region of interest
-				
-			Returns
-			-------
-			dst : numpy_array
-				Undistorted image.
+        return self
 
-		"""
+    def undistort(self, image, crop=True):
 
-		h,  w = image.shape[:2]
-		newcameramtx, roi = cv2.getOptimalNewCameraMatrix(self.mtx, self.dist, (w,h), 1, (w,h))
+        """ Returns undistorted image using calibration parameters.
 
-		# undistort
-		mapx, mapy = cv2.initUndistortRectifyMap(self.mtx, self.dist, None, newcameramtx, (w,h), 5)
-		dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
+            Parameters
+            ----------
+            image : numpy_array
+                Image to be undistorted
+            params : dict
+                Calibration parameters
+            crop : bool
+                Crop the image to the optimal region of interest
 
-		# crop the image
-		if crop:
-			x,y,w,h = roi
-			dst = dst[y:y+h, x:x+w]
+            Returns
+            -------
+            dst : numpy_array
+                Undistorted image.
 
-		return dst
+        """
 
-	def save_calib(filename): 
-		""" Saves calibration parameters as '.pkl' file.
+        h, w = image.shape[:2]
+        newcameramtx, roi = cv2.getOptimalNewCameraMatrix(
+            self.mtx, self.dist, (w, h), 1, (w, h))
 
-			Parameters
-			----------
-			filename : str
-				Path to save file, must be '.pkl' extension
+        # undistort
+        mapx, mapy = cv2.initUndistortRectifyMap(
+            self.mtx, self.dist, None, newcameramtx, (w, h), 5)
+        dst = cv2.remap(image, mapx, mapy, cv2.INTER_LINEAR)
 
-			Returns
-			-------
-			saved : bool
-				Saved successfully.
-		"""
-		if type(self.params) != dict:
-				raise TypeError("params must be 'dict'")
+        # crop the image
+        if crop:
+            x, y, w, h = roi
+            dst = dst[y:y + h, x:x + w]
 
-		output = open(filename, 'wb')
+        return dst
 
-		pickle.dump(self.params, output, protocol=0)
+    def save_calib(self, filename):
+        """ Saves calibration parameters as '.pkl' file.
 
-		output.close()
+            Parameters
+            ----------
+            filename : str
+                Path to save file, must be '.pkl' extension
 
-		
-		self.saved = True
+            Returns
+            -------
+            saved : bool
+                Saved successfully.
+        """
+        if type(self.params) != dict:
+                raise TypeError("params must be 'dict'")
 
-		return self.saved
+        output = open(filename, 'wb')
 
-	def load_calib(filename):
-		""" Loads calibration parameters from '.pkl' file.
+        pickle.dump(self.params, output, protocol=0)
 
-			Parameters
-			----------
-			filename : str
-				Path to load file, must be '.pkl' extension
-				
-			Returns
-			-------
-			params : dict
-				Parameters for undistorting images.
+        output.close()
 
-		"""
-		# read python dict back from the file
-		
-		pkl_file = open(filename, 'rb')
+        self.saved = True
 
-		self.params = pickle.load(pkl_file)
+        return self.saved
 
-		pkl_file.close()
+    def load_calib(self, filename):
+        """ Loads calibration parameters from '.pkl' file.
 
-		self.ret = self.params["ret"]
-		self.mtx = self.params["mtx"]
-		self.dist = self.params["dist"]
-		self.rvecs = self.params["rvecs"]
-		self.tvecs = self.params["tvecs"]
+            Parameters
+            ----------
+            filename : str
+                Path to load file, must be '.pkl' extension
 
-		self.loaded = True
-		return self.loaded
+            Returns
+            -------
+            params : dict
+                Parameters for undistorting images.
+
+        """
+        # read python dict back from the file
+
+        pkl_file = open(filename, 'rb')
+
+        self.params = pickle.load(pkl_file)
+
+        pkl_file.close()
+
+        self.ret = self.params["ret"]
+        self.mtx = self.params["mtx"]
+        self.dist = self.params["dist"]
+        self.rvecs = self.params["rvecs"]
+        self.tvecs = self.params["tvecs"]
+
+        self.loaded = True
+        return self.loaded
