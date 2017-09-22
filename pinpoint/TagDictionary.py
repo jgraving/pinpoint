@@ -101,7 +101,8 @@ def add_border(tag, tag_shape, white_width=1, black_width=1):
 
 
 def pairwise_distance_check(X, Y=None, distance=5, metric='cityblock'):
-    """ Check the pairwise distances between two arrays.
+    """
+    Check the pairwise distances between two arrays.
 
     Parameters
     ----------
@@ -142,13 +143,13 @@ def add_white_border(master_list, tag_shape, white_width):
 
     bordered = []
 
-    for tag in master_list:
-        new_tag = add_border(tag,
-                             tag_shape,
-                             white_width=white_width,
-                             black_width=0
-                             )
-        bordered.append(new_tag)
+    bordered = [add_border(tag,
+                           tag_shape,
+                           white_width=white_width,
+                           black_width=0
+                           )
+                for tag in master_list
+                ]
 
     bordered = np.array(bordered)
 
@@ -170,20 +171,21 @@ def get_id_list(ntags):
 
 class TagDictionary:
 
-    """A class for generating, saving, loading, and printing 2-D barcode tags.
+    """
+    A class for generating, saving, loading, and printing 2-D barcode tags.
 
-        Parameters
-        ----------
-        tag_shape : tuple of int, default = (5,5)
-            Shape of the barcodes to generate.
-        distance : float, default = 7
-            Minimum distance between barcodes
-        white_width : int, default = 1
-            Width of white border in bits.
-        black_width : int, default = 1
-            Width of black border in bits.
+    Parameters
+    ----------
+    tag_shape : tuple of int, default = (5,5)
+        Shape of the barcodes to generate.
+    distance : float, default = 7
+        Minimum distance between barcodes
+    white_width : int, default = 1
+        Width of white border in bits.
+    black_width : int, default = 1
+        Width of black border in bits.
 
-        """
+    """
 
     def __init__(self, tag_shape=(5, 5), distance=7,
                  white_width=1, black_width=1, random_seed=None):
@@ -442,14 +444,14 @@ class TagDictionary:
                 ax.get_yaxis().set_ticks([])
                 ax.xaxis.set_label_coords(0.5, -0.1)
 
-                ax.imshow(tag,
-                          cmap='gray',
-                          interpolation='nearest',
-                          zorder=200
-                          )
+                ax.pcolormesh(tag,
+                              cmap='gray',
+                              zorder=200
+                              )
+
                 plot += 1
 
-        plt.savefig(filename, dpi=600, interpolation='none')
+        plt.savefig(filename, interpolation='none')
 
         if show:
             plt.show()
