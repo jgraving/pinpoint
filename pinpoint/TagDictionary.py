@@ -15,6 +15,7 @@ WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 See the License for the specific language governing permissions and
 limitations under the License.
 """
+
 from __future__ import print_function
 
 import numpy as np
@@ -50,6 +51,7 @@ def rotate_tag90(tag, tag_shape, n_rot=1):
     tag = tag.reshape(tag_shape)
     rotated = np.rot90(tag, n_rot)
     rotated = rotated.flatten()
+
     return rotated
 
 
@@ -165,6 +167,7 @@ def get_id_list(ntags):
 
     return id_list
 
+
 class TagDictionary:
 
     """A class for generating, saving, loading, and printing 2-D barcode tags.
@@ -251,7 +254,7 @@ class TagDictionary:
             test = pairwise_distance_check(tag_list, distance=self.distance)
 
             # if tag and all rotations are different enough from each other...
-            if test:
+            if test is True:
 
                 if self.first_tag is True:
                     self.master_list = tag_list
@@ -287,7 +290,8 @@ class TagDictionary:
 
     def save_dict(self, filename="master_list.pkl"):
 
-        """Save configuration as ``.pkl`` file.
+        """
+        Save configuration as ``.pkl`` file.
 
         Parameters
         ----------
@@ -298,7 +302,7 @@ class TagDictionary:
         -------
         saved : bool
             Saved successfully.
-    """
+        """
         config = {"master_list": self.master_list,
                   "id_list": self.id_list,
                   "tag_shape": self.tag_shape,
@@ -319,7 +323,8 @@ class TagDictionary:
 
     def load_dict(self, filename="master_list.pkl"):
 
-        """Load configuration from a ``.pkl`` file.
+        """
+        Load configuration from a ``.pkl`` file.
 
         Parameters
         ----------
@@ -344,34 +349,44 @@ class TagDictionary:
         self.master_list = self.master_list.astype(bool)
         self.id_list = config["id_list"]
         self.tag_shape = config["tag_shape"]
-        #self.distance = config["distance"]
+        # self.distance = config["distance"]
         self.white_width = config["white_width"]
         self.black_width = config["black_width"]
-        self.white_shape = tuple([x+(self.white_width*2) for x in self.tag_shape])
-        self.black_shape = tuple([x+(self.white_width*2)+(self.black_width*2) for x in self.tag_shape])
-        self.ntags = self.master_list.shape[0]//4
+        self.white_shape = tuple([x + (self.white_width * 2)
+                                  for x in self.tag_shape])
+        self.black_shape = tuple([x + (self.white_width * 2) +
+                                  (self.black_width * 2)
+                                  for x in self.tag_shape])
+        self.ntags = self.master_list.shape[0] // 4
         self.id_index = np.arange(len(self.id_list))
-        self.tag_len = self.tag_shape[0]*self.tag_shape[1]
+        self.tag_len = self.tag_shape[0] * self.tag_shape[1]
 
-        self.barcode_list = add_white_border(self.master_list, self.tag_shape, self.white_width)
+        self.barcode_list = add_white_border(self.master_list,
+                                             self.tag_shape,
+                                             self.white_width)
 
         self.loaded = True
 
         return self.loaded
 
+    def print_tags(self, filename, ntags=200,
+                   page_size=(8.26, 11.69), ncols=20, id_fontsize=5,
+                   arrow_fontsize=10, id_digits=4, show=True):
 
-    def print_tags(self, filename, ntags = 200, page_size = (8.26, 11.69), ncols = 20, id_fontsize = 5, arrow_fontsize = 10, id_digits = 4, show = True):
-
-        """Print tags as image file or PDF. Default settngs are for ~6-mm wide tags.
+        """
+        Print tags as image file or PDF.
+        Default settngs are for ~6-mm wide tags.
 
         Parameters
         ----------
         filename : str
-            Location for saving the barcode images, must be vector graphic (`.pdf`, '.svg', '.eps') or image (`.png`, `.jpg`, etc.) file extension.
+            Location for saving the barcode images,
+            must be vector graphic (`.pdf`, '.svg', '.eps')
+            or image (`.png`, `.jpg`, etc.) file extension.
         ntags : int, default = 200
             Number of tags per page.
         page_size : tuple of float, default = (8.26, 11.69)
-            Size of the printed page, default is A4. 
+            Size of the printed page, default is A4.
         ncols : int, default = 20
             Number of columns.
         id_fontsize : int, default = 5
@@ -379,28 +394,47 @@ class TagDictionary:
         arrow_fontsize : int, default = 10
             Font size for arrow.
         id_digits : int, default = 5
-            Number of digits for ID number printed below barcode (zero pads the left side of the number).
+            Number of digits for ID number
+            printed below barcode (zero pads the left side of the number).
         show : bool
             Show the figure using plt.show()
 
         """
 
-        self.fig = plt.figure(figsize = page_size)
-        plot = 1
-        for idx, tag in enumerate(self.master_list):
-            if (idx+1) % 4 == 0 and plot <= ntags:
+        self.fig = plt.figure(figsize=page_size)
 
-                tag = add_border(tag, self.tag_shape, self.white_width, self.black_width)
+        plot = 1
+
+        for idx, tag in enumerate(self.master_list):
+            if (idx + 1) % 4 == 0 and plot <= ntags:
+
+                tag = add_border(tag,
+                                 self.tag_shape,
+                                 self.white_width,
+                                 self.black_width)
                 tag = tag.reshape(self.black_shape)
 
-                ax = plt.subplot(ntags//ncols, ncols, plot)
-                tag_number = str((idx+1)/4)
+                ax = plt.subplot(ntags // ncols, ncols, plot)
+                tag_number = str((idx + 1) / 4)
 
                 if len(tag_number) < id_digits:
-                    tag_number = "0"*(id_digits-len(tag_number)) + tag_number
+                    zero_pad = "0" * (id_digits - len(tag_number))
+                    tag_number = zero_pad + tag_number
 
-                ax.set_title(u'\u2191', fontsize = arrow_fontsize, family = 'sans-serif', weight = 'normal')
-                ax.set_xlabel(tag_number, fontsize = id_fontsize, family = 'sans-serif', weight = 'heavy', color = 'white', backgroundcolor = 'black', bbox = {'fc': 'black', 'ec': 'none'})
+                ax.set_title(u'\u2191',
+                             fontsize=arrow_fontsize,
+                             family='sans-serif',
+                             weight='normal'
+                             )
+                ax.set_xlabel(tag_number,
+                              fontsize=id_fontsize,
+                              family='sans-serif',
+                              weight='heavy',
+                              color='white',
+                              backgroundcolor='black',
+                              bbox={'fc': 'black', 'ec': 'none'}
+                              )
+
                 ax.set_aspect(1)
                 ax.xaxis.set_ticks_position('none')
                 ax.yaxis.set_ticks_position('none')
@@ -408,11 +442,14 @@ class TagDictionary:
                 ax.get_yaxis().set_ticks([])
                 ax.xaxis.set_label_coords(0.5, -0.1)
 
-                ax.imshow(tag, cmap='gray', interpolation = 'nearest', zorder = 200)
-
+                ax.imshow(tag,
+                          cmap='gray',
+                          interpolation='nearest',
+                          zorder=200
+                          )
                 plot += 1
 
-        plt.savefig(filename, dpi=600, interpolation = 'none')
+        plt.savefig(filename, dpi=600, interpolation='none')
 
         if show:
             plt.show()
