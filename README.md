@@ -16,7 +16,10 @@ Install the development version:
 ```bash
 pip install git+https://www.github.com/jgraving/pinpoint.git
 ```
-
+Install the latest stable release:
+```bash
+pip install https://github.com/jgraving/pinpoint/archive/v0.0.1-alpha.zip
+```
 Dependencies
 ------------
 
@@ -28,6 +31,10 @@ Dependencies
 
 - [matplotlib](http://matplotlib.org/)
 
+- [scikit-learn](http://scikit-learn.org/stable/)
+
+- [numba](http://numba.pydata.org/)
+
 - [OpenCV 3.1+](http://opencv.org/)
 
 
@@ -35,7 +42,7 @@ Development
 -------------
 [https://github.com/jgraving/pinpoint](https://github.com/jgraving/pinpoint)
 
-Please [submit any bugs](https://github.com/jgraving/pinpoint/issues/new) you encounter to the GitHub issue tracker
+Please [submit](https://github.com/jgraving/pinpoint/issues/new) bugs or feature requests to the GitHub issue tracker
 
 License
 ------------
