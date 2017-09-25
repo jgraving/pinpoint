@@ -109,7 +109,7 @@ def pairwise_distance_check(X, Y=None, distance=5, metric='cityblock'):
     X : array
         Array of flattened barcodes.
     Y : array
-        Array of flattened barcodes.
+        Array of flattened barcodes. default = None
     distance : float
         Minimum distance between all barcodes in X and Y.
     metric : str
@@ -146,10 +146,8 @@ def add_white_border(master_list, tag_shape, white_width):
     bordered = [add_border(tag,
                            tag_shape,
                            white_width=white_width,
-                           black_width=0
-                           )
-                for tag in master_list
-                ]
+                           black_width=0)
+                for tag in master_list]
 
     bordered = np.array(bordered)
 
@@ -225,31 +223,22 @@ class TagDictionary:
 
         """
 
-        self.niter = niter
-
         if verbose:
             print("Generating tags. This may take awhile...")
 
-        for idx in np.arange(0, self.niter + 1):  # generate some tags
+        for idx in np.arange(0, niter + 1):  # generate some tags
 
-            if verbose and idx % 10000 == 0 and idx > 0 \
+            if verbose and (idx % 10000 == 0 or idx == niter) and idx > 0 \
                and not isinstance(self.master_list, type(None)):
-                    print("Iteration: " + str(idx) + "/" + str(self.niter))
+                    print("Iteration: " + str(idx) + "/" + str(niter))
                     print("Tags found: ", len(self.master_list) // 4)
-
-            if verbose and idx == self.niter \
-               and not isinstance(self.master_list, type(None)):
-                print("Iteration: " + str(idx) + "/" + str(self.niter))
-                print("Tags found: ", len(self.master_list) // 4)
 
             # randomly generate a tag
             new_tag = np.random.randint(0, 2, size=(self.tag_len), dtype=bool)
 
             # get tag rotations
-            tag_90 = rotate_tag90(new_tag, self.tag_shape, 1)
-            tag_180 = rotate_tag90(new_tag, self.tag_shape, 2)
-            tag_270 = rotate_tag90(new_tag, self.tag_shape, 3)
-            tag_list = [new_tag, tag_90, tag_180, tag_270]
+            tag_list = [rotate_tag90(new_tag, self.tag_shape, n_rot)
+                        for n_rot in np.arange(1, 4)]
             tag_list = np.array(tag_list, dtype=bool)
 
             # check distance between tag and rotations
