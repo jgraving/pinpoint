@@ -24,10 +24,10 @@ import matplotlib.pyplot as plt
 import datetime as dt
 import os.path
 
-import multiprocessing
-
 from .TagDictionary import TagDictionary
 from .CameraCalibration import CameraCalibration
+from .VideoReader import VideoReader
+from .Parallel import Parallel
 
 from sklearn.neighbors import NearestNeighbors
 
@@ -46,92 +46,7 @@ cv2.setNumThreads(0)
 __all__ = ['Tracker']
 
 
-class Parallel:
-	def __init__(self, n_jobs):
-		
-		if n_jobs < 0:
-			n_jobs = multiprocessing.cpu_count()+n_jobs+1
-		elif n_jobs > multiprocessing.cpu_count():
-			n_jobs = multiprocessing.cpu_count()
-			
-		self.n_jobs = n_jobs
-		self.pool = multiprocessing.Pool(n_jobs)
-	
-	def process(self, job, arg, asarray=False):    
-			
-		processed = self.pool.map(job, arg)
-		
-		if asarray:
-			processed = np.array(processed)
-			
-		return processed
 
-	def close(self):
-
-		self.pool.close()
-		self.pool.terminate()
-		self.pool.join()
-
-class VideoReader:
-	
-	def __init__(self, source):
-		
-		self._source = source
-		self.stream = cv2.VideoCapture(self._source)
-		self._total_frames = int(self.stream.get(cv2.CAP_PROP_FRAME_COUNT))
-		self._fps = int(self.stream.get(cv2.CAP_PROP_FPS))
-		self._codec = int(self.stream.get(cv2.CAP_PROP_FOURCC))
-		self._height = int(self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
-		self._width = int(self.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
-		self._finished = False
-
-	def read(self):
-		ret, frame = self.stream.read()
-		if ret:
-			return frame
-		else:
-			self._finished = True
-	
-	def read_batch(self, batch_size=8):
-		frames = []
-		for idx in range(batch_size):
-			ret, frame = self.stream.read()
-			if ret:
-				frames.append(frame)
-			else:
-				self._finished = True
-		return frames
-	
-	def close(self):
-		self.stream.release()
-		return not self.stream.isOpened()
-	
-	def current_frame(self):
-		return int(self.stream.get(cv2.CAP_PROP_POS_FRAMES))
-	
-	def current_time(self):
-		return self.stream.get(cv2.CAP_PROP_POS_MSEC)
-	
-	def percent_finished(self):
-		return self.stream.get(cv2.CAP_PROP_POS_AVI_RATIO) * 100
-	
-	def fps(self):
-		return self._fps
-	
-	def codec(self):
-		return self._codec
-	
-	def height(self):
-		return self._height
-	
-	def width(self):
-		return self._width
-	
-	def total_frames(self):
-		return self._total_frames
-	
-	def finished(self):
-		return self._finished
 
 def _process_frames_parallel(feed_dict):
 
