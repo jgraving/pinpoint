@@ -142,7 +142,7 @@ def grayscale(color_image, channel=None):
     return gray_image
 
 
-def threshold(gray_image, block_size=101, offset=0):
+def adaptive_threshold(gray_image, block_size=101, offset=0):
 
     """
     Returns binarized thresholded image from single-channel grayscale image.
@@ -885,10 +885,17 @@ def preprocess_pixels(points_array, pixels_array, var_thresh,
 
     return (points_array, pixels_array)
 
-def process_frame(frame, channel, resize, block_size, offset, barcode_shape, white_width, area_min, area_max, x_proximity, y_proximity, tolerance, template, max_side, var_thresh, barcode_nn, id_list, id_index, distance_threshold):
+
+def process_frame(frame, channel, resize,
+                  block_size, offset, barcode_shape,
+                  white_width, area_min, area_max,
+                  x_proximity, y_proximity, tolerance,
+                  template, max_side, var_thresh,
+                  barcode_nn, id_list, id_index,
+                  distance_threshold):
     """
-    Process a single frame to track barcodes. 
-    
+    Process a single frame to track barcodes.
+
     Parameters
     ----------
     frame : array_like, shape (MxNx3)
@@ -896,10 +903,13 @@ def process_frame(frame, channel, resize, block_size, offset, barcode_shape, whi
     channel : {'blue', 'green', 'red', 'none', None}, default = None
         The color channel to use for producing the grayscale image.
     block_size : int, default = 1001
-        Odd value integer. Size of the local neighborhood for adaptive thresholding.
+        Odd value integer. Size of the local neighborhood
+        for adaptive thresholding.
     offset : default = 2
-        Constant subtracted from the mean. Normally, it is positive but may be zero or negative as well. 
-        The threshold value is the mean of the block_size x block_size neighborhood minus offset.
+        Constant subtracted from the mean.
+        Normally, it is positive but may be zero or negative as well.
+        The threshold value is the mean of the block_size x block_size
+        neighborhood minus offset.
     barcode_shape : tuple
         The shape of the barcode with white border
     white_width : int
@@ -908,35 +918,45 @@ def process_frame(frame, channel, resize, block_size, offset, barcode_shape, whi
         Minimum area
     area_max : float
         Maximum area
+    edge_proximity : int, default = 1
+        The distance threshold for ignoring candidate barcodes
+        too close to the image edge. Default is 1 pixel.
     x_proximity : int
-        The threshold in pixels for how close a contour can be to the x-axis border.
-        This should correspond to frame_width - 1, but is precalculated for speed
-    y_proximity : int 
-        The threshold in pixels for how close a contour can be to the y-axis border.
-        This should correspond to frame_height - 1, but is precalculated for speed
+        The distance threshold for ignoring candidate barcodes
+        near the x-axis border. This should correspond to
+        frame_width - edge_proximity, but is precalculated for speed.
+    y_proximity : int
+        The distance threshold for ignoring candidate barcodes
+        near the y-axis border. This should correspond to
+        frame_height - edge_proximity, but is precalculated for speed.
     tolerance : int or float, default = 0.1
-        Tolerance for fitting a polygon as a proportion of the perimeter of the contour. 
-        This value is used to set epsilon, which is the maximum distance between the original contour 
-        and its polygon approximation. Higher values decrease the number of vertices in the polygon.
-        Lower values increase the number of vertices in the polygon. This parameter affects 
-        how many many contours reach the barcode matching algorithm, 
-        as only polygons with 4 vertices are used.
+        Tolerance for fitting a polygon as a proportion
+        of the perimeter of the contour. This value is used
+        to set epsilon, which is the maximum distance between
+        the original contour and its polygon approximation.
+        Higher values decrease the number of vertices in the polygon.
+        Lower values increase the number of vertices in the polygon.
+        This parameter affects how many many contours reach the barcode
+        matching algorithm, as only polygons with 4 vertices are used.
     template : array_like
-        A template for storing the extracted pixels. 
-        This should be precalculated using get_tag_template()
-    max_side : int 
+        A template for storing the extracted pixels.
+        This should be precalculated using tag_template()
+    max_side : int
         The size of the template in pixels
     var_thresh : float, (default = 500)
         Minimum variance threshold
     barcode_nn : NearestNeighbors class
-        A NearestNeighbors class from sci-kit learn fitted to a list of barcodes.
-        See sklearn.neighbors.NearestNeighbors for details
+        A NearestNeighbors class from sci-kit learn fitted to
+        a list of barcodes. See sklearn.neighbors.NearestNeighbors
+        for details
     id_list : array_like
-        An array of known identities corresponding to the list of barcodes in barcode_nn
+        An array of known identities corresponding
+        to the list of barcodes in barcode_nn
     id_index : array_like
         An array of indices corresponding to id_list
     distance_threshold : float
-        The maximum distance between a barcode candidate and its matched identity
+        The maximum distance between a barcode candidate
+        and its matched identity
 
     Returns
     -------
@@ -955,56 +975,65 @@ def process_frame(frame, channel, resize, block_size, offset, barcode_shape, whi
         "best_id_list" : ndarray, shape (n_samples)
             Array of identities that best match each barcode
         "distances" : ndarray, shape (n_samples)
-            Array of Hamming distances between each barcode 
+            Array of Hamming distances between each barcode
             and the closest match
     """
-    best_id_list = np.zeros((0,1))
-    distances = np.zeros((0,1))
-    
-    gray = get_grayscale(frame, channel=channel)
-    if resize > 1:
-        gray = cv2.resize(gray, (0,0), None, resize, resize)
-    gray = np.flipud(gray)
-    thresh = get_threshold(gray, block_size=block_size, offset=offset)
-    contours = get_contours(thresh)
 
-    points_array, pixels_array = get_candidate_barcodes(image=gray,
-                                                        contours=contours,
-                                                        barcode_shape=barcode_shape,
-                                                        area_min=area_min,
-                                                        area_max=area_max,
-                                                        area_sign=-1,
-                                                        edge_proximity=1,
-                                                        x_proximity=x_proximity,
-                                                        y_proximity=y_proximity,
-                                                        tolerance=tolerance,
-                                                        max_side=max_side,
-                                                        template=template
-                                                       )
-    
+    best_id_list = np.zeros((0, 1))
+    distances = np.zeros((0, 1))
+
+    gray = grayscale(frame, channel=channel)
+    if resize > 1:
+        gray = cv2.resize(gray, (0, 0), None, resize, resize)
+    gray = np.flipud(gray)
+    thresh = adaptive_threshold(gray, block_size=block_size, offset=offset)
+    contours = find_contours(thresh)
+
+    (points_array,
+     pixels_array) = find_candidate_barcodes(image=gray,
+                                             contours=contours,
+                                             barcode_shape=barcode_shape,
+                                             area_min=area_min,
+                                             area_max=area_max,
+                                             area_sign=-1,
+                                             edge_proximity=1,
+                                             x_proximity=x_proximity,
+                                             y_proximity=y_proximity,
+                                             tolerance=tolerance,
+                                             max_side=max_side,
+                                             template=template
+                                             )
+
     if pixels_array.shape[0] > 0:
-        points_array, pixels_array = preprocess_pixels(points_array=points_array,
-                                                        pixels_array=pixels_array,
-                                                        var_thresh=var_thresh,
-                                                        barcode_shape=barcode_shape,
-                                                        white_width=white_width
-                                                        )
+        (points_array,
+         pixels_array) = preprocess_pixels(points_array=points_array,
+                                           pixels_array=pixels_array,
+                                           var_thresh=var_thresh,
+                                           barcode_shape=barcode_shape,
+                                           white_width=white_width
+                                           )
+
     if pixels_array.shape[0] > 0:
-        points_array, pixels_array, best_id_list, best_id_index, distances = match_barcodes(points_array=points_array,
-                                                                  pixels_array=pixels_array,
-                                                                  barcode_nn=barcode_nn,
-                                                                  id_list=id_list,
-                                                                  id_index=id_index,
-                                                                  distance_threshold=distance_threshold
-                                                                                           )
-    if points_array.shape[0] > 0:                                                           
+        (points_array,
+         pixels_array,
+         best_id_list,
+         best_id_index,
+         distances) = match_barcodes(points_array=points_array,
+                                     pixels_array=pixels_array,
+                                     barcode_nn=barcode_nn,
+                                     id_list=id_list,
+                                     id_index=id_index,
+                                     distance_threshold=distance_threshold
+                                     )
+    if points_array.shape[0] > 0:
         points_array = sort_corners(points_array, best_id_index)
-    
-    fetch_dict = {"gray":gray,
-                "thresh":thresh,
-                "points_array":points_array,
-                "pixels_array":pixels_array,
-                "best_id_list":best_id_list,
-                "distances":distances}
+
+    fetch_dict = {"gray": gray,
+                  "thresh": thresh,
+                  "points_array": points_array,
+                  "pixels_array": pixels_array,
+                  "best_id_list": best_id_list,
+                  "distances": distances
+                  }
 
     return fetch_dict
