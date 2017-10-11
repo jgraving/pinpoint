@@ -8,7 +8,7 @@ import os
 # certain easy_install versions
 os.environ["MPLCONFIGDIR"] = "."
 
-DESCRIPTION = "pinpoint: behavioral tracking using Python and OpenCV"
+DESCRIPTION = "pinpoint: behavioral tracking using 2D barcode tags"
 LONG_DESCRIPTION = """\
 pinpoint is a Python library for generating and tracking 2D barcode tags. 
 The library uses numpy and matplotlib to generate barcode tags and uses OpenCV to automatically track each tag. 
