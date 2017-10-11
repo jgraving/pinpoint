@@ -61,7 +61,7 @@ Development
 -------------
 [https://github.com/jgraving/pinpoint](https://github.com/jgraving/pinpoint)
 
-Please submit bugs or feature requests to the [GitHub issue tracker]((https://github.com/jgraving/pinpoint/issues/new)
+Please submit bugs or feature requests to the [GitHub issue tracker](https://github.com/jgraving/pinpoint/issues/new)
 
 License
 ------------
