@@ -44,9 +44,9 @@ Installing OpenCV
 
 OpenCV cannot be automatically installed using pip and must be installed separately. Here are instructions on how to accomplish this: 
 
-Instructions for [MacOS](https://www.pyimagesearch.com/2016/12/19/install-opencv-3-on-macos-with-homebrew-the-easy-way/)
+[Instructions for MacOS](https://www.pyimagesearch.com/2016/12/19/install-opencv-3-on-macos-with-homebrew-the-easy-way/)
 
-Instructions for [Ubuntu](https://www.pyimagesearch.com/2016/10/24/ubuntu-16-04-how-to-install-opencv/)
+[Instructions for Ubuntu](https://www.pyimagesearch.com/2016/10/24/ubuntu-16-04-how-to-install-opencv/)
 
 These instructions may be out-of-date.
 
