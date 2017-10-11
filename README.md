@@ -6,7 +6,7 @@
 =======================================
 
 **pinpoint** is a Python library for generating and tracking 2D barcode tags. 
-The library uses numpy and matplotlib to generate barcode tags and uses OpenCV to automatically track the each tag. 
+The library uses numpy and matplotlib to generate barcode tags and uses OpenCV to automatically track each tag. 
 It provides a high-level API for the automated measurement of animal behavior and locomotion.
 
 This software is still in early-release development. Expect some adventures. 
