@@ -2,12 +2,14 @@
 
 [logo]: logo-small.png
 
-**PINPOINT**: behavioral tracking using 2D barcode tags
+**pinpoint**: behavioral tracking using 2D barcode tags
 =======================================
 
-**PINPOINT** is a Python library for generating and tracking 2D barcode tags. 
-The library uses numpy and matplotlib to generate barcode tags and uses OpenCV to automatically track the location, orientation and identity of each tag in a video. 
-It provides a high-level API for the automated analysis of animal behavior and locomotion.
+**pinpoint** is a Python library for generating and tracking 2D barcode tags. 
+The library uses numpy and matplotlib to generate barcode tags and uses OpenCV to automatically track the each tag. 
+It provides a high-level API for the automated measurement of animal behavior and locomotion.
+
+This software is still in early-release development. Expect some adventures. 
 
 Installation
 ------------
@@ -37,12 +39,19 @@ Dependencies
 
 - [OpenCV 3.1+](http://opencv.org/)
 
+Installing OpenCV
+------------
+
+[Instructions for MacOS](https://www.pyimagesearch.com/2016/12/19/install-opencv-3-on-macos-with-homebrew-the-easy-way/)
+[Instructions for Ubuntu](https://www.pyimagesearch.com/2016/10/24/ubuntu-16-04-how-to-install-opencv/)
+
+These instructions may be out-of-date.
 
 Development
 -------------
 [https://github.com/jgraving/pinpoint](https://github.com/jgraving/pinpoint)
 
-Please [submit](https://github.com/jgraving/pinpoint/issues/new) bugs or feature requests to the GitHub issue tracker
+Please submit bugs or feature requests to the [GitHub issue tracker]((https://github.com/jgraving/pinpoint/issues/new)
 
 License
 ------------
