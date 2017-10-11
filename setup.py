@@ -19,7 +19,7 @@ DISTNAME = 'pinpoint'
 MAINTAINER = 'Jacob Graving'
 MAINTAINER_EMAIL = 'jgraving@gmail.com'
 URL = 'http://jakegraving.com'
-LICENSE = 'BSD (3-clause)'
+LICENSE = 'Apache Software License 2.0'
 DOWNLOAD_URL = 'https://jgraving@github.com/jgraving/pinpoint.git'
 VERSION = '0.0.1'
 
@@ -102,7 +102,7 @@ if __name__ == "__main__":
                      'Intended Audience :: Science/Research',
                      'Programming Language :: Python :: 2.7',
                      'Programming Language :: Python :: 3',
-                     'License :: OSI Approved :: BSD License',
+                     'License :: OSI Approved :: Apache Software License',
                      'Topic :: Scientific/Engineering :: Visualization',
                      'Topic :: Scientific/Engineering :: Image Recognition',
                      'Topic :: Scientific/Engineering :: Information Analysis',
