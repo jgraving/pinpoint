@@ -11,6 +11,13 @@ It provides a high-level API for the automated measurement of animal behavior an
 
 This software is still in early-release development. Expect some adventures. 
 
+Citing
+----------
+If you use this software for academic research, please consider citing it using this zenodo DOI: 
+
+[![DOI](https://zenodo.org/badge/89222910.svg)](https://zenodo.org/badge/latestdoi/89222910)
+
+
 Installation
 ------------
 
@@ -60,4 +67,6 @@ License
 ------------
 
 Released under a Apache 2.0 License. See [LICENSE](https://github.com/jgraving/pinpoint/blob/master/LICENSE) for details.
+
+
 
