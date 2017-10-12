@@ -330,7 +330,7 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
             self.pool = Parallel(self.n_jobs)
 
         try:
-            while not self.finished():
+            while not self.finished:
 
                 frames = self.read_batch(batch_size)
 
