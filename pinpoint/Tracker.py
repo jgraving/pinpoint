@@ -286,11 +286,11 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
         self.h5file = h5py.File(filename, 'w')
 
-        self.h5file.attrs.create('fps', self._fps)
-        self.h5file.attrs.create('codec', self._codec)
-        self.h5file.attrs.create('height', self._height)
-        self.h5file.attrs.create('width', self._width)
-        self.h5file.attrs.create('total_frames', self._total_frames)
+        self.h5file.attrs.create('fps', self.fps)
+        self.h5file.attrs.create('codec', self.codec)
+        self.h5file.attrs.create('height', self.frame_height)
+        self.h5file.attrs.create('width', self.frame_width)
+        self.h5file.attrs.create('total_frames', self.total_frames)
         # self.h5file.attrs.create('source', self._source)
 
         data_group = self.h5file.create_group('data')
