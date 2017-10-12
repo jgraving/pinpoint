@@ -21,7 +21,7 @@ MAINTAINER_EMAIL = 'jgraving@gmail.com'
 URL = 'http://jakegraving.com'
 LICENSE = 'Apache Software License 2.0'
 DOWNLOAD_URL = 'https://jgraving@github.com/jgraving/pinpoint.git'
-VERSION = '0.0.1'
+VERSION = '0.0.2-dev'
 
 try:
     from setuptools import setup
