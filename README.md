@@ -68,5 +68,23 @@ License
 
 Released under a Apache 2.0 License. See [LICENSE](https://github.com/jgraving/pinpoint/blob/master/LICENSE) for details.
 
+References 
+------------
+pinpoint is based on [ArUco](https://www.uco.es/investiga/grupos/ava/node/26):
 
+```
+Garrido-Jurado, S., Muñoz-Salinas, R., Madrid-Cuevas, F. J., & Marín-Jiménez, M. J. (2014). Automatic generation and detection of highly reliable fiducial markers under occlusion. Pattern Recognition, 47(6), 2280-2292.
+```
+
+Other similar marker systems are also publicly available, such as [AprilTag](https://april.eecs.umich.edu/software/apriltag.html):
+
+```
+Wang, J., & Olson, E. (2016). AprilTag 2: Efficient and robust fiducial detection. In Intelligent Robots and Systems (IROS), 2016 IEEE/RSJ International Conference (pp. 4193-4198). IEEE.
+```
+
+If you require barcode tracking in MATLAB see [BEETag](https://github.com/jamescrall/BEEtag):
+
+```
+Crall, J. D., Gravish, N., Mountcastle, A. M., & Combes, S. A. (2015). BEEtag: a low-cost, image-based tracking system for the study of animal behavior and locomotion. PloS one, 10(9), e0136487.
+```
 
