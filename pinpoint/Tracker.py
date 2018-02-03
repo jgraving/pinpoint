@@ -418,4 +418,4 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                 self.pool.close()
             self.h5file.close()
 
-        return fetch_dict
+        return True
