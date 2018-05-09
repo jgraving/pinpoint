@@ -21,7 +21,7 @@ MAINTAINER_EMAIL = 'jgraving@gmail.com'
 URL = 'http://jakegraving.com'
 LICENSE = 'Apache Software License 2.0'
 DOWNLOAD_URL = 'https://jgraving@github.com/jgraving/pinpoint.git'
-VERSION = '0.0.2-dev'
+VERSION = '0.0.3-dev'
 
 try:
     from setuptools import setup
@@ -70,6 +70,10 @@ def check_dependencies():
         import numba
     except ImportError:
         install_requires.append('numba')
+    try:
+        import deepdish
+    except ImportError:
+        install_requires.append('deepdish')
     try:
         import types
     except ImportError:
