@@ -21,6 +21,7 @@ from __future__ import print_function
 import numpy as np
 import matplotlib.pyplot as plt
 
+import deepdish as dd
 import pickle
 
 from sklearn.metrics.pairwise import pairwise_distances
@@ -238,7 +239,7 @@ class TagDictionary:
 
             # get tag rotations
             tag_list = [rotate_tag90(new_tag, self.tag_shape, n_rot)
-                        for n_rot in np.arange(1, 4)]
+                        for n_rot in np.arange(0, 4)]
             tag_list = np.array(tag_list, dtype=bool)
 
             # check distance between tag and rotations
@@ -279,22 +280,22 @@ class TagDictionary:
 
         return self
 
-    def save_dict(self, filename="master_list.pkl"):
+    def save_dict(self, filename="master_list.h5"):
 
         """
-        Save configuration as ``.pkl`` file.
+        Save configuration as ``.h5`` file.
 
         Parameters
         ----------
-        filename : str, default = "master_list.pkl"
-            Path to save file, must be '.pkl' extension
+        filename : str, default = "master_list.npy"
+            Path to save file, must be '.h5' extension
 
         Returns
         -------
         saved : bool
             Saved successfully.
         """
-        config = {"master_list": self.master_list,
+        config = {"master_list": self.master_list.astype(int) * 1,
                   "id_list": self.id_list,
                   "tag_shape": self.tag_shape,
                   "distance": self.distance,
@@ -302,25 +303,21 @@ class TagDictionary:
                   "black_width": self.black_width,
                   }
 
-        output = open(filename, 'wb')
-
-        pickle.dump(config, output, protocol=0)
-
-        output.close()
+        dd.io.save(filename, config)
 
         self.saved = True
 
         return self.saved
 
-    def load_dict(self, filename="master_list.pkl"):
+    def load_dict(self, filename="master_list.h5"):
 
         """
-        Load configuration from a ``.pkl`` file.
+        Load configuration from a ``.h5`` file.
 
         Parameters
         ----------
-        filename : str, default = "master_list.pkl"
-            Path to load file, must be '.pkl' extension
+        filename : str, default = "master_list.h5"
+            Path to load file, must be '.h5' extension
 
         Returns
         -------
@@ -328,12 +325,14 @@ class TagDictionary:
             Loaded successfully.
         """
 
-        # Open and load file
-        pkl_file = open(filename, 'rb')
+        if filename.lower().endswith(('.pkl')):
+            # Open and load file
+            pkl_file = open(filename, 'rb')
+            config = pickle.load(pkl_file)
+            pkl_file.close()
 
-        config = pickle.load(pkl_file)
-
-        pkl_file.close()
+        elif filename.lower().endswith(('.h5')):
+            config = dd.io.load(filename)
 
         # Load new configuration
         self.master_list = config["master_list"]
