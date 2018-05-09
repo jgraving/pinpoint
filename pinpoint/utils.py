@@ -324,7 +324,8 @@ def extract_pixels(gray_image, points, template, max_side, barcode_shape):
                                  (max_side, max_side),
                                  flags=(cv2.INTER_LINEAR),
                                  borderValue=255)
-    pixels = cv2.resize(pixels, barcode_shape)
+    pixels = cv2.resize(pixels, barcode_shape, interpolation=cv2.INTER_AREA)
+    pixels = np.fliplr(pixels)
     pixels = pixels.reshape((1, -1))
 
     return pixels
@@ -985,7 +986,6 @@ def process_frame(frame, channel, resize,
     gray = grayscale(frame, channel=channel)
     if resize > 1:
         gray = cv2.resize(gray, (0, 0), None, resize, resize)
-    gray = np.flipud(gray)
     thresh = adaptive_threshold(gray, block_size=block_size, offset=offset)
     contours = find_contours(thresh)
 
