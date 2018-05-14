@@ -93,52 +93,18 @@ def grayscale(color_image, channel=None):
     ----------
     color_image : array_like, shape (MxNx3)
         3-channel BGR-format color image
-    channel : {'blue', 'green', 'red', 'none', None}, default = None
+    channel : {0, 1, 2, None}, default = None
         The color channel to use for producing the grayscale image.
-
     Returns
     -------
     gray_image : (MxNx1) numpy array
         Single-channel grayscale image as a numpy array.
 
-    Notes
-    ----------
-    For channel, None uses the default linear transformation from OpenCV:
-
-        Y = 0.299R + 0.587G + 0.114B
-
-    Channels 'blue', 'green', and 'red' use the respective color channel
-    as the grayscale image. Under white ambient lighting, 'green' typically
-    provides the lowest noise. Under red and infrared lighting, 'red' typically
-    provides the lowest noise.
-
     """
-    # if type(channel) not in [str, type(None)]:
-    #    raise TypeError("Channel must be type str or None")
-    # if type(channel) is str:
-    # if not (channel.startswith('b') or
-    #            channel.startswith('g') or
-    #            channel.startswith('r')):
-    #    raise ValueError("Channel must be 'blue', 'green', 'red', or None")
-    # if type(color_image) is not np.ndarray:
-    #    raise TypeError("image must be a numpy array")
-
-    # if color_image.ndim != 3:
-    #    raise ValueError("image must be color (MxNx3)")
-    # if color_image.shape[2] != 3:
-    #    raise ValueError("image must have 3 color channels (MxNx3)")
-    # if color_image.dtype is not np.dtype(np.uint8):
-    #    raise TypeError("image array must be dtype np.uint8")
-
-    if channel.startswith('b'):
-        gray_image, _, _ = cv2.split(color_image)
-    elif channel.startswith('g'):
-            _, gray_image, _ = cv2.split(color_image)
-    elif channel.startswith('r'):
-        _, _, gray_image = cv2.split(color_image)
-    elif channel is None:
+    if channel:
+        gray_image = color_image[...,channel]
+    else:
         gray_image = cv2.cvtColor(color_image, cv2.COLOR_BGR2GRAY)
-
     return gray_image
 
 
@@ -322,9 +288,9 @@ def extract_pixels(gray_image, points, template, max_side, barcode_shape):
     pixels = cv2.warpPerspective(gray_image,
                                  transform_matrix,
                                  (max_side, max_side),
-                                 flags=(cv2.INTER_LINEAR),
+                                 flags=(cv2.INTER_NEAREST),
                                  borderValue=255)
-    pixels = cv2.resize(pixels, barcode_shape, interpolation=cv2.INTER_AREA)
+    pixels = cv2.resize(pixels, barcode_shape, interpolation=cv2.INTER_LINEAR)
     pixels = np.fliplr(pixels)
     pixels = pixels.reshape((1, -1))
 
@@ -879,7 +845,6 @@ def preprocess_pixels(points_array, pixels_array, var_thresh,
                                                      var_thresh)
     if pixels_array.shape[0] > 0:
         pixels_array = otsu_threshold(pixels_array)
-    if pixels_array.shape[0] > 0:
         pixels_array = whiten_edge_pixels(pixels_array,
                                           barcode_shape,
                                           white_width)
@@ -893,15 +858,15 @@ def process_frame(frame, channel, resize,
                   x_proximity, y_proximity, tolerance,
                   template, max_side, var_thresh,
                   barcode_nn, id_list, id_index,
-                  distance_threshold):
+                  distance_threshold, clahe, otsu, dilate):
     """
     Process a single frame to track barcodes.
 
     Parameters
     ----------
     frame : array_like, shape (MxNx3)
-        3-channel BGR-format color image
-    channel : {'blue', 'green', 'red', 'none', None}, default = None
+        3-channel color image
+    channel : {0, 1, 2, None}, default = None
         The color channel to use for producing the grayscale image.
     block_size : int, default = 1001
         Odd value integer. Size of the local neighborhood
@@ -983,10 +948,22 @@ def process_frame(frame, channel, resize,
     best_id_list = np.zeros((0, 1))
     distances = np.zeros((0, 1))
 
-    gray = grayscale(frame, channel=channel)
+    gray = grayscale(frame, channel)
+    if clahe:
+        clahe = cv2.createCLAHE(0.05, (200, 200))
+        gray = clahe.apply(gray)
     if resize > 1:
-        gray = cv2.resize(gray, (0, 0), None, resize, resize)
-    thresh = adaptive_threshold(gray, block_size=block_size, offset=offset)
+        gray = cv2.resize(gray, (0, 0), None, resize, resize,
+                          interpolation=cv2.INTER_CUBIC)
+    if otsu:
+        ret, thresh = cv2.threshold(gray, 0, 255,
+                                    cv2.THRESH_BINARY + cv2.THRESH_OTSU)
+    else:
+        thresh = adaptive_threshold(gray, block_size=block_size, offset=offset)
+
+    if dilate:
+        thresh = cv2.dilate(thresh, np.ones((3, 3)))
+
     contours = find_contours(thresh)
 
     (points_array,

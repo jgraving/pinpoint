@@ -62,6 +62,9 @@ def _process_frames_parallel(feed_dict):
     id_list = feed_dict["id_list"]
     id_index = feed_dict["id_index"]
     distance_threshold = feed_dict["distance_threshold"]
+    clahe = feed_dict["clahe"]
+    otsu = feed_dict["otsu"]
+    dilate = feed_dict["otsu"]
 
     fetch_dict = process_frame(frame=frame,
                                channel=channel,
@@ -81,7 +84,10 @@ def _process_frames_parallel(feed_dict):
                                barcode_nn=barcode_nn,
                                id_list=id_list,
                                id_index=id_index,
-                               distance_threshold=distance_threshold
+                               distance_threshold=distance_threshold,
+                               clahe=clahe,
+                               otsu=otsu,
+                               dilate=dilate
                                )
 
     fetch_dict = {"points_array": fetch_dict["points_array"],
@@ -98,7 +104,7 @@ def process_frames_parallel(frames, channel, resize,
                             x_proximity, y_proximity, tolerance,
                             template, max_side, var_thresh,
                             barcode_nn, id_list, id_index,
-                            distance_threshold, pool):
+                            distance_threshold, clahe, otsu, dilate, pool):
 
     feed_dicts = [{"frame": frame,
                    "channel": channel,
@@ -118,7 +124,10 @@ def process_frames_parallel(frames, channel, resize,
                    "barcode_nn": barcode_nn,
                    "id_list": id_list,
                    "id_index": id_index,
-                   "distance_threshold": distance_threshold}
+                   "distance_threshold": distance_threshold,
+                   "clahe": clahe,
+                   "otsu": otsu,
+                   "dilate": dilate}
                   for frame in frames]
 
     del frames
@@ -180,9 +189,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
         Candidate barcodes with low variance
         are likely white or black blobs.
 
-    channel : {'blue', 'green', 'red', 'none', None}, default = None
-        The color channel to use for
-        producing the grayscale image.
+    channel : {0, 1, 2, None}, default = None
+        The color channel to use for producing
+        the grayscale image.
 
     resize : float, default=1.0
         A scalar value for resizing images.
@@ -202,7 +211,8 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
     def __init__(self, source, block_size=1001, offset=80,
                  area_range=(10, 10000), tolerance=0.1, distance_threshold=8,
-                 var_thresh=500, channel='green', resize=1.0):
+                 var_thresh=500, channel=None, resize=1.0,
+                 clahe=False, otsu=False, dilate=False):
 
         VideoReader.__init__(self, source)
         TagDictionary.__init__(self)
@@ -218,6 +228,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
         self.resize = resize
         self.x_proximity = (self.frame_width * self.resize) - 1
         self.y_proximity = (self.frame_height * self.resize) - 1
+        self.clahe = clahe
+        self.otsu = otsu
+        self.dilate = dilate
 
     def track(self, filename='output.h5', batch_size=8, n_jobs=1):
 
@@ -354,7 +367,10 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                                    barcode_nn=self.barcode_nn,
                                    id_list=self.id_list,
                                    id_index=self.id_index,
-                                   distance_threshold=self.distance_threshold
+                                   distance_threshold=self.distance_threshold,
+                                   clahe=self.clahe,
+                                   otsu=self.otsu,
+                                   dilate=self.dilate
                                    ) for frame in frames]
 
                 else:
@@ -379,6 +395,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                         id_list=self.id_list,
                         id_index=self.id_index,
                         distance_threshold=self.distance_threshold,
+                        clahe=self.clahe,
+                        otsu=self.otsu,
+                        dilate=self.dilate,
                         pool=self.pool
                     )
 
