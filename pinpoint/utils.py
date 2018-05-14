@@ -950,7 +950,7 @@ def process_frame(frame, channel, resize,
 
     gray = grayscale(frame, channel)
     if clahe:
-        clahe = cv2.createCLAHE(0.05, (200, 200))
+        clahe = cv2.createCLAHE(0.05, (clahe, clahe))
         gray = clahe.apply(gray)
     if resize > 1:
         gray = cv2.resize(gray, (0, 0), None, resize, resize,
