@@ -3,6 +3,14 @@
 # Copyright (C) 2015-2016 Jacob Graving <jgraving@gmail.com>
 
 import os
+import sys
+
+major = sys.version_info.major
+minor = sys.version_info.minor
+
+if major >= 3 and minor >= 6:
+  ImportError = ModuleNotFoundError
+
 # temporarily redirect config directory to prevent matplotlib importing
 # testing that for writeable directory which results in sandbox error in
 # certain easy_install versions
@@ -23,11 +31,7 @@ LICENSE = 'Apache Software License 2.0'
 DOWNLOAD_URL = 'https://jgraving@github.com/jgraving/pinpoint.git'
 VERSION = '0.0.3-dev'
 
-try:
-    from setuptools import setup
-    _has_setuptools = True
-except ImportError:
-    from distutils.core import setup
+from setuptools import setup, find_packages
 
 def check_dependencies():
     install_requires = []
@@ -101,7 +105,7 @@ if __name__ == "__main__":
         version=VERSION,
         download_url=DOWNLOAD_URL,
         install_requires=install_requires,
-        packages=['pinpoint'],
+        packages=find_packages(),
         classifiers=[
                      'Intended Audience :: Science/Research',
                      'Programming Language :: Python :: 2.7',
