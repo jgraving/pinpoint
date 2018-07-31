@@ -393,7 +393,7 @@ class TagDictionary:
                                  self.black_width)
                 tag = tag.reshape(self.black_shape)
                 ax = plt.subplot(ntags // ncols, ncols, plot)
-                tag_number = str((idx + 1) / 4)
+                tag_number = str((idx + 1) // 4)
 
                 if len(tag_number) < id_digits:
                     zero_pad = "0" * (id_digits - len(tag_number))
