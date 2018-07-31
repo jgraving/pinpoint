@@ -681,25 +681,28 @@ def sort_corners(points_array, best_id_index):
         corners = np.empty_like(points)
 
         if rotation_test == 3:
-            corners = points
+            corners[1] = tr
+            corners[0] = tl
+            corners[3] = bl
+            corners[2] = br
 
         if rotation_test == 0:
-            corners[0] = bl
             corners[1] = tl
-            corners[2] = tr
+            corners[0] = bl
             corners[3] = br
+            corners[2] = tr
 
         if rotation_test == 1:
-            corners[0] = br
             corners[1] = bl
-            corners[2] = tl
+            corners[0] = br
             corners[3] = tr
+            corners[2] = tl
 
         if rotation_test == 2:
-            corners[0] = tr
             corners[1] = br
-            corners[2] = bl
+            corners[0] = tr
             corners[3] = tl
+            corners[2] = bl
 
         points_array[idx] = corners
 

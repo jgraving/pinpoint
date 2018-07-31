@@ -172,7 +172,6 @@ class TagDictionary:
 
     """
     A class for generating, saving, loading, and printing 2-D barcode tags.
-
     Parameters
     ----------
     tag_shape : tuple of int, default = (5,5)
@@ -183,7 +182,6 @@ class TagDictionary:
         Width of white border in bits.
     black_width : int, default = 1
         Width of black border in bits.
-
     """
 
     def __init__(self, tag_shape=(5, 5), distance=7,
@@ -214,14 +212,12 @@ class TagDictionary:
     def generate_dict(self, niter=99999, verbose=False):
         """
         Generate barcode tags.
-
         Parameters
         ----------
         niter : int, default = 99999
             Number of iterations to try.
         verbose : bool, default = False
             Prints updates when True.
-
         """
 
         if verbose:
@@ -284,12 +280,10 @@ class TagDictionary:
 
         """
         Save configuration as ``.h5`` file.
-
         Parameters
         ----------
         filename : str, default = "master_list.npy"
             Path to save file, must be '.h5' extension
-
         Returns
         -------
         saved : bool
@@ -313,12 +307,10 @@ class TagDictionary:
 
         """
         Load configuration from a ``.h5`` file.
-
         Parameters
         ----------
         filename : str, default = "master_list.h5"
             Path to load file, must be '.h5' extension
-
         Returns
         -------
         loaded : bool
@@ -366,7 +358,6 @@ class TagDictionary:
         """
         Print tags as image file or PDF.
         Default settngs are for ~6-mm wide tags.
-
         Parameters
         ----------
         filename : str
@@ -388,7 +379,6 @@ class TagDictionary:
             printed below barcode (zero pads the left side of the number).
         show : bool
             Show the figure using plt.show()
-
         """
 
         self.fig = plt.figure(figsize=page_size)
@@ -397,13 +387,11 @@ class TagDictionary:
 
         for idx, tag in enumerate(self.master_list):
             if (idx + 1) % 4 == 0 and plot <= ntags:
-
                 tag = add_border(tag,
                                  self.tag_shape,
                                  self.white_width,
                                  self.black_width)
                 tag = tag.reshape(self.black_shape)
-
                 ax = plt.subplot(ntags // ncols, ncols, plot)
                 tag_number = str((idx + 1) / 4)
 
@@ -436,7 +424,7 @@ class TagDictionary:
                               cmap='gray',
                               zorder=200
                               )
-
+                ax.set_ylim(self.black_shape[0], 0)
                 plot += 1
 
         plt.savefig(filename, interpolation='none')
