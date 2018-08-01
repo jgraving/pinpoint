@@ -424,7 +424,7 @@ class TagDictionary:
                               cmap='gray',
                               zorder=200
                               )
-                ax.set_ylim(self.black_shape[0], 0)
+                ax.set_ylim(ax.get_ylim()[::-1])
                 plot += 1
 
         plt.savefig(filename, interpolation='none')
