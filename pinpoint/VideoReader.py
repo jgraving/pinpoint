@@ -18,63 +18,139 @@ limitations under the License.
 
 import cv2
 import numpy as np
+import os
 
 
-class VideoReader:
+class VideoReader(cv2.VideoCapture):
 
-    def __init__(self, source):
+    '''Read a video in batches.
 
-        self._source = source
-        self.stream = cv2.VideoCapture(self._source)
-        self.total_frames = int(self.stream.get(cv2.CAP_PROP_FRAME_COUNT))
-        self.fps = self.stream.get(cv2.CAP_PROP_FPS)
-        self.codec = self.stream.get(cv2.CAP_PROP_FOURCC)
-        self.frame_height = int(self.stream.get(cv2.CAP_PROP_FRAME_HEIGHT))
-        self.frame_width = int(self.stream.get(cv2.CAP_PROP_FRAME_WIDTH))
+    Parameters
+    ----------
+    videopath: str
+        Path to the video file.
+    batch_size: int, default = 1
+        Batch size for reading frames
+    gray: bool, default = False
+        If gray, return only the middle channel
+    '''
+
+    def __init__(self, videopath, batch_size=1, gray=False):
+
+        if isinstance(videopath, str):
+            if os.path.exists(videopath):
+                super(VideoReader, self).__init__(videopath)
+                self.videopath = videopath
+            else:
+                raise ValueError('file or path does not exist')
+        else:
+            raise TypeError('videopath must be str')
+        self.batch_size = batch_size
+        self.n_frames = int(self.get(cv2.CAP_PROP_FRAME_COUNT))
+        self.idx = 0
+        self.fps = self.get(cv2.CAP_PROP_FPS)
+        self.height = self.get(cv2.CAP_PROP_FRAME_HEIGHT)
+        self.width = self.get(cv2.CAP_PROP_FRAME_WIDTH)
         self.finished = False
+        self.gray = gray
+        self._read = super(VideoReader, self).read
 
     def read(self):
+        ''' Read one frame
 
-        ret, frame = self.stream.read()
+        Returns
+        -------
+        frame: array
+            Image is returned of the frame if a frame exists.
+            Otherwise, return None.
 
+        '''
+        ret, frame = self._read()
         if ret:
+            self.idx += 1
+            if self.gray:
+                frame = frame[..., 1][..., None]
             return frame
         else:
-            self._finished = True
+            self.finished = True
+            return None
 
-    def read_batch(self, batch_size=2, asarray=False):
+    def read_batch(self, batch_size=1, asarray=False):
+        ''' Read in a batch of frames.
 
+        Parameters
+        ----------
+        batch_size: int, default 1
+            Number of frames to pull from the video.
+
+        asarray: bool, default False
+            If True, stack the frames (in numpy).
+
+        Returns
+        -------
+        frames: list or array
+            A batch of frames from the video.
+
+        '''
         frames = []
-
         for idx in range(batch_size):
-            ret, frame = self.stream.read()
-            if ret:
+            frame = self.read()
+            if not self.finished:
                 frames.append(frame)
-            else:
-                self.finished = True
-                break
-
-        if asarray and len(frames) > 0:
-            frames = np.asarray(frames, dtype=np.uint8)
-
-        return frames
+        empty = len(frames) == 0
+        if asarray and not empty:
+            frames = np.stack(frames)
+        if not empty:
+            return frames
+        else:
+            return
 
     def close(self):
-        self.stream.release()
-        return not self.stream.isOpened()
+        ''' Close the VideoReader.
 
-    def current_frame(self, value=-1):
-        if value < 0:
-            return int(self.stream.get(cv2.CAP_PROP_POS_FRAMES))
-        else:
-            self.stream.set(cv2.CAP_PROP_POS_FRAMES, value)
+        Returns
+        -------
+        bool
+            Returns True if successfully closed.
 
-    def current_time(self, value=-1):
-        if value < 0:
-            return self.stream.get(cv2.CAP_PROP_POS_MSEC)
+        '''
+        self.release()
+        return not self.isOpened()
+
+    def __len__(self):
+        return int(np.ceil(self.n_frames / float(self.batch_size)))
+
+    def __getitem__(self, index):
+
+        if self.finished:
+            raise StopIteration
+        if isinstance(index, (int, np.integer)):
+            idx0 = index * self.batch_size
+            if self.idx != idx0:
+                self.set(cv2.CAP_PROP_POS_FRAMES, index - 1)
+                self.idx = idx0
+            return self.read_batch(self.batch_size, True)
         else:
-            self.stream.set(cv2.CAP_PROP_POS_MSEC, value)
+            raise NotImplementedError
+
+    def __next__(self):
+
+        if self.finished:
+            raise StopIteration
+        else:
+            return self.read_batch(self.batch_size, True)
+
+    def __del__(self):
+        self.close()
+
+    @property
+    def current_frame(self):
+        return int(self.get(cv2.CAP_PROP_POS_FRAMES))
+
+    @property
+    def current_time(self):
+        return self.get(cv2.CAP_PROP_POS_MSEC)
 
     @property
     def percent_finished(self):
-        return (float(self.current_frame()) / float(self.total_frames)) * 100
+        return self.get(cv2.CAP_PROP_POS_AVI_RATIO) * 100
