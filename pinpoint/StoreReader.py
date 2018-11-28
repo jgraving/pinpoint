@@ -24,13 +24,11 @@ class StoreReader:
 
     def __init__(self, path):
         self.store = imgstore.new_for_filename(path)
-        self.max = self.store.frame_max
-        self.min = self.store.frame_min
-        self.index = np.arange(self.min, self.max)
-        self.store.frame_number = self.min
+        self.metadata = self.store.get_frame_metadata()
+        self.index = np.array(self.metadata['frame_number'])
 
     def __len__(self):
-        return self.max - self.min
+        return self.index.shape[0]
 
     def get_data(self, indexes):
         indexes = self.index[indexes]
@@ -46,14 +44,9 @@ class StoreReader:
             frames.append(frame)
             frame_numbers.append(frame_number)
             frame_timestamps.append(frame_timestamp)
-        if len(indexes) > 1:
-            frames = np.stack(frames)
-            frame_numbers = np.array(frame_numbers)
-            frame_timestamps = np.array(frame_timestamps)
-        else:
-            frames = frames[0]
-            frame_numbers = frame_numbers[0]
-            frame_timestamps = frame_timestamps[0]
+        frames = np.stack(frames)
+        frame_numbers = np.array(frame_numbers)
+        frame_timestamps = np.array(frame_timestamps)
 
         return frames, frame_numbers, frame_timestamps
 
