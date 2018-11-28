@@ -31,11 +31,15 @@ class VideoReader(cv2.VideoCapture):
         Path to the video file.
     batch_size: int, default = 1
         Batch size for reading frames
+    framerate: float, default = None
+        Video framerate for determining timestamps
+        for each frame. If None, timestamps will
+        equal frame number.
     gray: bool, default = False
         If gray, return only the middle channel
     '''
 
-    def __init__(self, videopath, batch_size=1, gray=False):
+    def __init__(self, videopath, batch_size=1, framerate=None, gray=False):
 
         if isinstance(videopath, str):
             if os.path.exists(videopath):
@@ -47,10 +51,15 @@ class VideoReader(cv2.VideoCapture):
             raise TypeError('videopath must be str')
         self.batch_size = batch_size
         self.n_frames = int(self.get(cv2.CAP_PROP_FRAME_COUNT))
+        if framerate:
+            self.timestep = 1. / framerate
+        else:
+            self.timestep = 1.
         self.idx = 0
         self.fps = self.get(cv2.CAP_PROP_FPS)
         self.height = self.get(cv2.CAP_PROP_FRAME_HEIGHT)
         self.width = self.get(cv2.CAP_PROP_FRAME_WIDTH)
+        self.shape = (self.height, self.width)
         self.finished = False
         self.gray = gray
         self._read = super(VideoReader, self).read
@@ -70,40 +79,38 @@ class VideoReader(cv2.VideoCapture):
             self.idx += 1
             if self.gray:
                 frame = frame[..., 1][..., None]
-            return frame
+            return self.idx, frame
         else:
             self.finished = True
             return None
 
-    def read_batch(self, batch_size=1, asarray=False):
+    def read_batch(self):
         ''' Read in a batch of frames.
-
-        Parameters
-        ----------
-        batch_size: int, default 1
-            Number of frames to pull from the video.
-
-        asarray: bool, default False
-            If True, stack the frames (in numpy).
 
         Returns
         -------
-        frames: list or array
+        frames_idx: array
+            A batch of frames from the video.
+
+        frames: array
             A batch of frames from the video.
 
         '''
         frames = []
-        for idx in range(batch_size):
-            frame = self.read()
+        frames_idx = []
+        for idx in range(self.batch_size):
+            frame_idx, frame = self.read()
             if not self.finished:
                 frames.append(frame)
+                frames_idx.append(frame_idx)
         empty = len(frames) == 0
-        if asarray and not empty:
-            frames = np.stack(frames)
         if not empty:
-            return frames
+            frames = np.stack(frames)
+            frames_idx = np.array(frames_idx)
+            frame_timestamps = frames_idx * self.timestep
+            return frames, frames_idx, frame_timestamps
         else:
-            return
+            return None
 
     def close(self):
         ''' Close the VideoReader.
@@ -127,18 +134,19 @@ class VideoReader(cv2.VideoCapture):
         if isinstance(index, (int, np.integer)):
             idx0 = index * self.batch_size
             if self.idx != idx0:
-                self.set(cv2.CAP_PROP_POS_FRAMES, index - 1)
+                self.set(cv2.CAP_PROP_POS_FRAMES, idx0 - 1)
                 self.idx = idx0
-            return self.read_batch(self.batch_size, True)
         else:
             raise NotImplementedError
+
+        return self.read_batch()
 
     def __next__(self):
 
         if self.finished:
             raise StopIteration
         else:
-            return self.read_batch(self.batch_size, True)
+            return self.read_batch()
 
     def __del__(self):
         self.close()
