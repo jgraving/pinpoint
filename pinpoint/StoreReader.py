@@ -40,7 +40,7 @@ class StoreReader:
         frame_timestamps = []
         for idx in indexes:
             if idx is self.store.frame_number + 1:
-                frame, (frame_number, frame_timestamp) = self.store.get_next_image(exact_only=False)
+                frame, (frame_number, frame_timestamp) = self.store.get_next_framenumber(exact_only=False)
             else:
                 frame, (frame_number, frame_timestamp) = self.store.get_image(idx, exact_only=False)
             frames.append(frame)
