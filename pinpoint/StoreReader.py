@@ -20,15 +20,16 @@ import numpy as np
 import imgstore
 
 
-class StoreReader:
+class StoreFrameReader:
 
     def __init__(self, path):
         self.store = imgstore.new_for_filename(path)
         self.metadata = self.store.get_frame_metadata()
         self.metaindex = np.array(self.metadata['frame_number'])
+        self.shape = self.store.image_shape
 
     def __len__(self):
-        return self.index.shape[0]
+        return self.metaindex.shape[0]
 
     def get_data(self, indexes):
         indexes = self.metaindex[indexes]
@@ -58,9 +59,9 @@ class StoreReader:
             stop = key.stop
             if start is None:
                 start = 0
-            if stop is None:
-                stop = len(self) - 1
-            if stop < len(self):
+            if stop is None or stop >= len(self):
+                stop = len(self)
+            if stop <= len(self):
                 idx = range(start, stop)
             else:
                 raise IndexError
@@ -86,3 +87,44 @@ class StoreReader:
     def __getitem__(self, key):
         indexes = self._check_index(key)
         return self.get_data(indexes)
+
+
+class StoreReader:
+
+    def __init__(self, path, batch_size):
+        self.store = StoreFrameReader(path)
+        self.shape = self.store.shape
+        self.batch_size = batch_size
+        self.n_frames = len(self.store)
+        self.idx = 0
+
+    def __len__(self):
+        return int(np.ceil(self.n_frames / float(self.batch_size)))
+
+    def get_batch(self, index=None):
+        if index:
+            if isinstance(index, (int, np.integer)):
+                if index < 0:
+                    index += len(self)
+                if index < len(self):
+                    idx0 = index * self.batch_size
+                    idx1 = idx0 + self.batch_size
+                    self.idx = index
+                else:
+                    raise IndexError('index out of range')
+            else:
+                raise NotImplementedError
+        else:
+            if self.idx >= len(self) - 1:
+                self.idx = 0
+            if self.idx < len(self) - 1:
+                idx0 = self.idx * self.batch_size
+                idx1 = idx0 + self.batch_size
+                self.idx += 1
+            else:
+                raise StopIteration
+
+        return self.store[idx0:idx1]
+
+    def __getitem__(self, index):
+        return self.get_batch(index)
