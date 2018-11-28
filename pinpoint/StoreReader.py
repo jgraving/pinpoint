@@ -45,6 +45,8 @@ class StoreReader:
             frame_numbers.append(frame_number)
             frame_timestamps.append(frame_timestamp)
         frames = np.stack(frames)
+        if frames.ndim == 3:
+            frames = frames[..., np.newaxis]
         frame_numbers = np.array(frame_numbers)
         frame_timestamps = np.array(frame_timestamps)
 
