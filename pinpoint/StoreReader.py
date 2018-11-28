@@ -25,13 +25,13 @@ class StoreReader:
     def __init__(self, path):
         self.store = imgstore.new_for_filename(path)
         self.metadata = self.store.get_frame_metadata()
-        self.index = np.array(self.metadata['frame_number'])
+        self.metaindex = np.array(self.metadata['frame_number'])
 
     def __len__(self):
         return self.index.shape[0]
 
     def get_data(self, indexes):
-        indexes = self.index[indexes]
+        indexes = self.metaindex[indexes]
 
         frames = []
         frame_numbers = []
