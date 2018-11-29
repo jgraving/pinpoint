@@ -23,7 +23,6 @@ import numpy as np
 
 from .TagDictionary import TagDictionary
 from .CameraCalibration import CameraCalibration
-from .VideoReader import VideoReader
 from .Parallel import Parallel
 
 from sklearn.neighbors import NearestNeighbors
@@ -90,9 +89,9 @@ def _process_frames_parallel(feed_dict):
                                dilate=dilate
                                )
 
-    fetch_dict = {"points_array": fetch_dict["points_array"],
-                  "best_id_list": fetch_dict["best_id_list"],
-                  "distances": fetch_dict["distances"]
+    fetch_dict = {"corners": fetch_dict["corners"],
+                  "identity": fetch_dict["identity"],
+                  "distance": fetch_dict["distance"]
                   }
 
     return fetch_dict
@@ -139,7 +138,7 @@ def process_frames_parallel(frames, channel, resize,
     return fetch_dicts
 
 
-class Tracker(TagDictionary, VideoReader, CameraCalibration):
+class Tracker(TagDictionary, CameraCalibration):
     """
 
     Tracker class for processing videos to track barcodes.
@@ -214,9 +213,9 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                  var_thresh=500, channel=None, resize=1.0,
                  clahe=False, otsu=False, dilate=False):
 
-        VideoReader.__init__(self, source)
         TagDictionary.__init__(self)
         CameraCalibration.__init__(self)
+        self.source = source
         self.area_min = area_range[0] * (resize**2)
         self.area_max = area_range[1] * (resize**2)
         self.tolerance = tolerance
@@ -226,13 +225,13 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
         self.channel = channel
         self.var_thresh = var_thresh
         self.resize = resize
-        self.x_proximity = (self.frame_width * self.resize) - 1
-        self.y_proximity = (self.frame_height * self.resize) - 1
+        self.x_proximity = (self.source.shape[1] * self.resize) - 1
+        self.y_proximity = (self.source.shape[0] * self.resize) - 1
         self.clahe = clahe
         self.otsu = otsu
         self.dilate = dilate
 
-    def track(self, filename='output.h5', batch_size=8, n_jobs=1):
+    def track(self, filename='output.h5', n_jobs=1):
 
         """
         Process frames to track barcodes.
@@ -242,8 +241,6 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
         ----------
         filename : str, default = 'output.h5'
             The output file for saving data.
-        batch_size : int, default is 8
-            The number of frames to process in each batch.
         n_jobs : int (default = 1)
             Number of jobs to use for processing images on the CPU.
             If -1, all CPUs are used. If 1 is given, no parallel computing is
@@ -268,29 +265,6 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
         distances : ndarray, dtype=int, shape (n_samples, 1)
             The Hamming distance for each sample to the
             nearest neighbor from the barcode dictionary
-
-
-        Returns
-        -------
-        fetch_dict : dict
-
-        A dictionary containing the following objects
-        processed from the latest frame:
-
-        "gray" : ndarray, shape (MxNx1)
-            The grayscale image. Only returned if n_jobs=1
-        "thresh" : ndarray, shape (MxNx1)
-            The threshold image. Only returned if n_jobs=1
-        "points_array" : ndarray, shape (n_samples, 4, 2)
-            Array of coordinates for barcodes
-        "pixels_array" : ndarray, shape (n_samples, n_pixels)
-            Array of flattened pixels for barcodes
-        "best_id_list" : ndarray, shape (n_samples)
-            Array of identities that best match each barcode
-        "distances" : ndarray, shape (n_samples)
-            Array of Hamming distances between each barcode
-            and the closest match
-
         """
         if n_jobs == 0:
             n_jobs = 1
@@ -299,17 +273,16 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
 
         self.h5file = h5py.File(filename, 'w')
 
-        self.h5file.attrs.create('fps', self.fps)
-        self.h5file.attrs.create('codec', self.codec)
-        self.h5file.attrs.create('height', self.frame_height)
-        self.h5file.attrs.create('width', self.frame_width)
-        self.h5file.attrs.create('total_frames', self.total_frames)
-        # self.h5file.attrs.create('source', self._source)
+        self.h5file.attrs.create('source', self.source.path.encode('utf8'))
 
         data_group = self.h5file.create_group('data')
-        frame_idx_dset = data_group.create_dataset('frame_idx',
+        frames_idx_dset = data_group.create_dataset('frames_idx',
                                                    shape=(0,),
                                                    dtype=np.int64,
+                                                   maxshape=(None,))
+        timestamps_dset = data_group.create_dataset('timestamps',
+                                                   shape=(0,),
+                                                   dtype=np.float64,
                                                    maxshape=(None,))
         corners_dset = data_group.create_dataset('corners',
                                                  shape=(0, 4, 2),
@@ -319,15 +292,16 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                                                   shape=(0,),
                                                   dtype=np.int32,
                                                   maxshape=(None,))
-        distances_dset = data_group.create_dataset('distances',
+        distance_dset = data_group.create_dataset('distance',
                                                    shape=(0,),
                                                    dtype=np.int32,
                                                    maxshape=(None,))
 
-        dset_list = [frame_idx_dset,
+        dset_list = [frames_idx_dset,
+                     timestamps_dset,
                      corners_dset,
                      identity_dset,
-                     distances_dset]
+                     distance_dset]
 
         self.barcode_shape = self.white_shape
         max_side = 100
@@ -337,15 +311,12 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                                            algorithm='ball_tree')
         self.barcode_nn.fit(self.barcode_list)
 
-        idx = 0
-
         if self.n_jobs != 1:
             self.pool = Parallel(self.n_jobs)
 
         try:
-            while not self.finished:
+            for frames, frames_idx, timestamps in self.source:
 
-                frames = self.read_batch(batch_size)
 
                 if self.n_jobs == 1:
                     fetch_dicts = [process_frame(
@@ -401,19 +372,21 @@ class Tracker(TagDictionary, VideoReader, CameraCalibration):
                         pool=self.pool
                     )
 
-                for fetch_dict in fetch_dicts:
+                for idx, timestamp, fetch_dict in zip(frames_idx, timestamps, fetch_dicts):
 
-                    points_array = fetch_dict["points_array"]
-                    best_id_list = fetch_dict["best_id_list"]
-                    distances = fetch_dict["distances"]
+                    corners = fetch_dict["corners"]
+                    identity = fetch_dict["identity"]
+                    distance = fetch_dict["distance"]
 
-                    points_array = points_array / self.resize
-                    frame_idx = np.repeat(idx, points_array.shape[0])
-                    idx += 1
+                    corners /= self.resize
+                    frame_idx = np.repeat(idx, corners.shape[0])
+                    timestamp = np.repeat(timestamp, corners.shape[0])
+
                     data_list = [frame_idx,
-                                 points_array,
-                                 best_id_list,
-                                 distances]
+                                 timestamp,
+                                 corners,
+                                 identity,
+                                 distance]
 
                     for (dset, data) in zip(dset_list, data_list):
 

@@ -937,13 +937,13 @@ def process_frame(frame, channel, resize,
             The grayscale image
         "thresh" : ndarray, shape (MxNx1)
             The threshold image
-        "points_array" : ndarray, shape (n_samples, 4, 2)
+        "corners" : ndarray, shape (n_samples, 4, 2)
             Array of coordinates for barcodes
-        "pixels_array" : ndarray, shape (n_samples, n_pixels)
+        "pixels" : ndarray, shape (n_samples, n_pixels)
             Array of flattened pixels for barcodes
-        "best_id_list" : ndarray, shape (n_samples)
+        "identity" : ndarray, shape (n_samples)
             Array of identities that best match each barcode
-        "distances" : ndarray, shape (n_samples)
+        "distance" : ndarray, shape (n_samples)
             Array of Hamming distances between each barcode
             and the closest match
     """
@@ -1010,10 +1010,10 @@ def process_frame(frame, channel, resize,
 
     fetch_dict = {"gray": gray,
                   "thresh": thresh,
-                  "points_array": points_array,
-                  "pixels_array": pixels_array,
-                  "best_id_list": best_id_list,
-                  "distances": distances
+                  "corners": points_array,
+                  #"pixels": pixels_array,
+                  "identity": best_id_list,
+                  "distance": distances
                   }
 
     return fetch_dict

@@ -27,7 +27,7 @@ class VideoReader(cv2.VideoCapture):
 
     Parameters
     ----------
-    videopath: str
+    path: str
         Path to the video file.
     batch_size: int, default = 1
         Batch size for reading frames
@@ -39,16 +39,16 @@ class VideoReader(cv2.VideoCapture):
         If gray, return only the middle channel
     '''
 
-    def __init__(self, videopath, batch_size=1, framerate=None, gray=False):
+    def __init__(self, path, batch_size=1, framerate=None, gray=False):
 
-        if isinstance(videopath, str):
-            if os.path.exists(videopath):
-                super(VideoReader, self).__init__(videopath)
-                self.videopath = videopath
+        if isinstance(path, str):
+            if os.path.exists(path):
+                super(VideoReader, self).__init__(path)
+                self.path = path
             else:
                 raise ValueError('file or path does not exist')
         else:
-            raise TypeError('videopath must be str')
+            raise TypeError('path must be str')
         self.batch_size = batch_size
         self.n_frames = int(self.get(cv2.CAP_PROP_FRAME_COUNT))
         if framerate:
@@ -76,10 +76,10 @@ class VideoReader(cv2.VideoCapture):
         '''
         ret, frame = self._read()
         if ret:
-            self.idx += 1
             if self.gray:
                 frame = frame[..., 1][..., None]
-            return self.idx, frame
+            self.idx += 1
+            return self.idx - 1, frame
         else:
             self.finished = True
             return None
@@ -99,16 +99,17 @@ class VideoReader(cv2.VideoCapture):
         frames = []
         frames_idx = []
         for idx in range(self.batch_size):
-            frame_idx, frame = self.read()
-            if not self.finished:
+            frame = self.read()
+            if frame is not None and not self.finished:
+                frame_idx, frame = frame
                 frames.append(frame)
                 frames_idx.append(frame_idx)
         empty = len(frames) == 0
         if not empty:
             frames = np.stack(frames)
             frames_idx = np.array(frames_idx)
-            frame_timestamps = frames_idx * self.timestep
-            return frames, frames_idx, frame_timestamps
+            timestamps = frames_idx * self.timestep
+            return frames, frames_idx, timestamps
         else:
             return None
 
