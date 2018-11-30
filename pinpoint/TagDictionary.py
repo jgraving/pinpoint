@@ -18,10 +18,10 @@ limitations under the License.
 
 from __future__ import print_function
 
+import deepdish as dd
 import numpy as np
 import matplotlib.pyplot as plt
 
-import deepdish as dd
 import pickle
 
 from sklearn.metrics.pairwise import pairwise_distances
