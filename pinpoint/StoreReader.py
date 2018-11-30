@@ -19,6 +19,8 @@ limitations under the License.
 import numpy as np
 import imgstore
 
+__all__ = ['StoreFrameReader', 'StoreReader']
+
 
 class StoreFrameReader:
 
