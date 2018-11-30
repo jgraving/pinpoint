@@ -82,6 +82,14 @@ def check_dependencies():
         import warnings
     except ImportError:
         install_requires.append('warnings')
+    try:
+        import tqdm
+    except ImportError:
+        install_requires.append('tqdm')
+    try:
+        import imgstore
+    except ImportError:
+        install_requires.append('imgstore')
 
     return install_requires
 
