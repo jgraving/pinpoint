@@ -31,6 +31,8 @@ import h5py
 
 from .utils import process_frame, tag_template
 
+from tqdm import tqdm
+
 import gc
 
 # disable multithreading in OpenCV for main thread
@@ -319,7 +321,7 @@ class Tracker(TagDictionary, CameraCalibration):
             self.pool = Parallel(self.n_jobs)
 
         try:
-            for frames, frames_idx, timestamps in self.source:
+            for frames, frames_idx, timestamps in tqdm(self.source):
 
 
                 if self.n_jobs == 1:
