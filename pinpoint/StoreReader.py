@@ -35,23 +35,23 @@ class StoreFrameReader:
         indexes = self.metaindex[indexes]
 
         frames = []
-        frame_numbers = []
-        frame_timestamps = []
+        frames_idx = []
+        timestamps = []
         for idx in indexes:
             if idx is self.store.frame_number + 1:
-                frame, (frame_number, frame_timestamp) = self.store.get_next_framenumber(exact_only=False)
+                frame, (frame_idx, timestamp) = self.store.get_next_framenumber(exact_only=False)
             else:
-                frame, (frame_number, frame_timestamp) = self.store.get_image(idx, exact_only=False)
+                frame, (frame_idx, timestamp) = self.store.get_image(idx, exact_only=False)
             frames.append(frame)
-            frame_numbers.append(frame_number)
-            frame_timestamps.append(frame_timestamp)
+            frames_idx.append(frame_idx)
+            timestamps.append(timestamp)
         frames = np.stack(frames)
         if frames.ndim == 3:
             frames = frames[..., np.newaxis]
-        frame_numbers = np.array(frame_numbers)
-        frame_timestamps = np.array(frame_timestamps)
+        frames_idx = np.array(frames_idx)
+        timestamps = np.array(timestamps)
 
-        return frames, frame_numbers, frame_timestamps
+        return frames, frames_idx, timestamps
 
     def _check_index(self, key):
         if isinstance(key, slice):
