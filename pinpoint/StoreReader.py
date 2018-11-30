@@ -92,14 +92,18 @@ class StoreFrameReader:
 class StoreReader:
 
     def __init__(self, path, batch_size):
+        self.path = path
         self.store = StoreFrameReader(path)
         self.shape = self.store.shape
         self.batch_size = batch_size
-        self.n_frames = len(self.store)
         self.idx = 0
 
     def __len__(self):
         return int(np.ceil(self.n_frames / float(self.batch_size)))
+
+    @property
+    def n_frames(self):
+        return len(self.store)
 
     def get_batch(self, index=None):
         if index:
