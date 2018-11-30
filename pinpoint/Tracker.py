@@ -211,7 +211,7 @@ class Tracker(TagDictionary, CameraCalibration):
     def __init__(self, source, block_size=1001, offset=80,
                  area_range=(10, 10000), tolerance=0.1, distance_threshold=8,
                  var_thresh=500, channel=None, resize=1.0,
-                 clahe=False, otsu=False, dilate=False):
+                 clahe=None, otsu=None, dilate=None):
 
         TagDictionary.__init__(self)
         CameraCalibration.__init__(self)
@@ -227,7 +227,11 @@ class Tracker(TagDictionary, CameraCalibration):
         self.resize = resize
         self.x_proximity = (self.source.shape[1] * self.resize) - 1
         self.y_proximity = (self.source.shape[0] * self.resize) - 1
-        self.clahe = clahe
+        if clahe is not None:
+            if isinstance(clahe, tuple):
+                self.clahe = clahe
+            else:
+                raise TypeError('clahe must be tuple')
         self.otsu = otsu
         self.dilate = dilate
 

@@ -952,19 +952,19 @@ def process_frame(frame, channel, resize,
     distances = np.zeros((0, 1))
 
     gray = grayscale(frame, channel)
-    if clahe:
-        clahe = cv2.createCLAHE(0.05, (clahe, clahe))
+    if clahe is not None:
+        clahe = cv2.createCLAHE(clahe[0], (clahe[1], clahe[1]))
         gray = clahe.apply(gray)
     if resize > 1:
         gray = cv2.resize(gray, (0, 0), None, resize, resize,
                           interpolation=cv2.INTER_CUBIC)
-    if otsu:
+    if otsu is not None:
         ret, thresh = cv2.threshold(gray, 0, 255,
                                     cv2.THRESH_BINARY + cv2.THRESH_OTSU)
     else:
         thresh = adaptive_threshold(gray, block_size=block_size, offset=offset)
 
-    if dilate:
+    if dilate is not None:
         thresh = cv2.dilate(thresh, np.ones((3, 3)))
 
     contours = find_contours(thresh)
