@@ -277,43 +277,39 @@ class Tracker(TagDictionary, CameraCalibration):
 
         self.n_jobs = n_jobs
 
-        self.h5file = h5py.File(filename, 'w')
+        with h5py.File(filename, 'w') as h5file:
 
-        self.h5file.attrs.create('source', self.source.path.encode('utf8'))
+            h5file.attrs.create('source', self.source.path.encode('utf8'))
 
-        data_group = self.h5file.create_group('data')
-        frames_idx_dset = data_group.create_dataset('frames_idx',
-                                                   shape=(0,),
-                                                   dtype=np.int64,
-                                                   maxshape=(None,))
-        timestamps_dset = data_group.create_dataset('timestamps',
-                                                   shape=(0,),
-                                                   dtype=np.float64,
-                                                   maxshape=(None,))
-        corners_dset = data_group.create_dataset('corners',
-                                                 shape=(0, 4, 2),
-                                                 dtype=np.float64,
-                                                 maxshape=(None, 4, 2))
-        identity_dset = data_group.create_dataset('identity',
-                                                  shape=(0,),
-                                                  dtype=np.int32,
-                                                  maxshape=(None,))
-        distance_dset = data_group.create_dataset('distance',
-                                                   shape=(0,),
-                                                   dtype=np.int32,
-                                                   maxshape=(None,))
-
-        dset_list = [frames_idx_dset,
-                     timestamps_dset,
-                     corners_dset,
-                     identity_dset,
-                     distance_dset]
+            data_group = h5file.create_group('data')
+            data_group.create_dataset('frames_idx',
+                                      shape=(0,),
+                                      dtype=np.int64,
+                                      maxshape=(None,))
+            data_group.create_dataset('timestamps',
+                                      shape=(0,),
+                                      dtype=np.float64,
+                                      maxshape=(None,))
+            data_group.create_dataset('corners',
+                                      shape=(0, 4, 2),
+                                      dtype=np.float64,
+                                      maxshape=(None, 4, 2))
+            data_group.create_dataset('identity',
+                                      shape=(0,),
+                                      dtype=np.int32,
+                                      maxshape=(None,))
+            data_group.create_dataset('distance',
+                                      shape=(0,),
+                                      dtype=np.int32,
+                                      maxshape=(None,))
+            h5file.close()
 
         self.barcode_shape = self.white_shape
         max_side = 100
         template = tag_template(max_side)
 
-        self.barcode_nn = NearestNeighbors(metric='cityblock',
+        self.barcode_nn = NearestNeighbors(n_neighbors=1,
+                                           metric='cityblock',
                                            algorithm='ball_tree')
         self.barcode_nn.fit(self.barcode_list)
 
@@ -322,7 +318,6 @@ class Tracker(TagDictionary, CameraCalibration):
 
         try:
             for frames, frames_idx, timestamps in tqdm(self.source):
-
 
                 if self.n_jobs == 1:
                     fetch_dicts = [process_frame(
@@ -377,39 +372,50 @@ class Tracker(TagDictionary, CameraCalibration):
                         dilate=self.dilate,
                         pool=self.pool
                     )
+                with h5py.File(filename, 'r+') as h5file:
 
-                for idx, timestamp, fetch_dict in zip(frames_idx, timestamps, fetch_dicts):
+                    data_group = h5file['data']
+                    dset_keys = ['frames_idx',
+                                 'timestamps',
+                                 'corners',
+                                 'identity',
+                                 'distance']
+                    dset_list = [data_group[key] for key in dset_keys]
 
-                    corners = fetch_dict["corners"]
-                    identity = fetch_dict["identity"]
-                    distance = fetch_dict["distance"]
+                    zipped = zip(frames_idx, timestamps, fetch_dicts)
 
-                    corners /= self.resize
-                    frame_idx = np.repeat(idx, corners.shape[0])
-                    timestamp = np.repeat(timestamp, corners.shape[0])
+                    for idx, timestamp, fetch_dict in zipped:
 
-                    data_list = [frame_idx,
-                                 timestamp,
-                                 corners,
-                                 identity,
-                                 distance]
+                        corners = fetch_dict["corners"]
+                        identity = fetch_dict["identity"]
+                        distance = fetch_dict["distance"]
 
-                    for (dset, data) in zip(dset_list, data_list):
+                        corners /= self.resize
+                        frame_idx = np.repeat(idx, corners.shape[0])
+                        timestamp = np.repeat(timestamp, corners.shape[0])
 
-                        current_shape = list(dset.shape)
-                        current_size = current_shape[0]
+                        data_list = [frame_idx,
+                                     timestamp,
+                                     corners,
+                                     identity,
+                                     distance]
 
-                        new_shape = current_shape
-                        new_shape[0] = new_shape[0] + data.shape[0]
-                        new_size = new_shape[0]
+                        for (dset, data) in zip(dset_list, data_list):
 
-                        dset.resize(tuple(new_shape))
-                        dset[current_size:new_size] = data
+                            current_shape = list(dset.shape)
+                            current_size = current_shape[0]
+
+                            new_shape = current_shape
+                            new_shape[0] = new_shape[0] + data.shape[0]
+                            new_size = new_shape[0]
+
+                            dset.resize(tuple(new_shape))
+                            dset[current_size:new_size] = data
+
+                    h5file.close()
 
             if self.n_jobs != 1:
                 self.pool.close()
-
-            self.h5file.close()
 
         except KeyboardInterrupt:
             if self.n_jobs != 1:
