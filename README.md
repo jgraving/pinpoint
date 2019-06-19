@@ -32,7 +32,7 @@ pip install https://github.com/jgraving/pinpoint/archive/v0.0.1-alpha.zip
 Dependencies
 ------------
 
-- [Python 2.7+](http://www.python.org)
+- [Python 3.5+](http://www.python.org) 
 
 - [numpy](http://www.numpy.org/)
 
