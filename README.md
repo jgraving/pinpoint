@@ -25,10 +25,7 @@ Install the development version:
 ```bash
 pip install git+https://www.github.com/jgraving/pinpoint.git
 ```
-Install the latest stable release:
-```bash
-pip install https://github.com/jgraving/pinpoint/archive/v0.0.1-alpha.zip
-```
+
 Dependencies
 ------------
 
@@ -45,17 +42,6 @@ Dependencies
 - [numba](http://numba.pydata.org/)
 
 - [OpenCV 3.1+](http://opencv.org/)
-
-Installing OpenCV
-------------
-
-OpenCV cannot be automatically installed using pip and must be installed separately. Here are instructions on how to accomplish this: 
-
-[Instructions for MacOS](https://www.pyimagesearch.com/2016/12/19/install-opencv-3-on-macos-with-homebrew-the-easy-way/)
-
-[Instructions for Ubuntu](https://www.pyimagesearch.com/2016/10/24/ubuntu-16-04-how-to-install-opencv/)
-
-These instructions may be out-of-date.
 
 Development
 -------------
