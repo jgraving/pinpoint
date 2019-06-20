@@ -229,11 +229,7 @@ class Tracker(TagDictionary, CameraCalibration):
         self.resize = resize
         self.x_proximity = (self.source.shape[1] * self.resize) - 1
         self.y_proximity = (self.source.shape[0] * self.resize) - 1
-        if clahe is not None:
-            if isinstance(clahe, tuple):
-                self.clahe = clahe
-            else:
-                raise TypeError('clahe must be tuple')
+        self.clahe = clahe
         self.otsu = otsu
         self.dilate = dilate
 
