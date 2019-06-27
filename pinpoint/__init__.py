@@ -19,6 +19,7 @@ from .CameraCalibration import CameraCalibration
 from .TagDictionary import TagDictionary
 from .Tracker import Tracker
 from .VideoReader import VideoReader
+from .ImageReader import ImageReader
 from .StoreReader import *
 
 set()
